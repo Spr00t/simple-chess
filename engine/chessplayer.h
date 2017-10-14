@@ -2,7 +2,7 @@
 #define CHESS_PLAYER_H_INCLUDED
 
 class ChessBoard;
-class Move;
+struct Move;
 
 class ChessPlayer
 {
@@ -20,6 +20,8 @@ class ChessPlayer
 		* Ask player what to do next
 		*/
 		virtual bool getMove(ChessBoard & board, Move & move) const = 0;
+        virtual bool showMove(ChessBoard & board, Move & move) = 0;
+
 
 	protected:
 

@@ -3,10 +3,13 @@
 #include <list>
 #include <cctype>
 #include <cstring>
+#include <sstream>
 #include "humanplayer.h"
 #include "chessboard.h"
+#include "global.h"
 
 using namespace std;
+#define NOT !
 
 HumanPlayer::HumanPlayer(int color)
  : ChessPlayer(color)
@@ -21,23 +24,38 @@ bool HumanPlayer::getMove(ChessBoard & board, Move & move) const
 	char * input;
 
 	for(;;) {
-		printf(">> ");
+        if (NOT Global::instance().isSlaveMode()) {
+            printf(">> ");
+        } else {
+            stringstream str;
+            str << "Waiting for input";
+            Global::instance().log(str.str());
+        }
 
-		if((input = readInput()) == NULL) {
-			printf("Could not read input.\n");
+
+        if((input = readInput()) == NULL) {
+            Global::instance().log("Could not read input.");
 			continue;
 		}
 
 		if(!processInput(input, move)) {
-			printf("Error while parsing input.\n");
+
+            Global::instance().log("Error while parsing input.");
 			continue;
 		}
 
 		if(!board.isValidMove(color, move)) {
-			printf("Invalid move.\n");
+
+            stringstream str;
+            str << "Invalid move " << move.toString();
+            Global::instance().log(str.str());
 			continue;
 		}
-
+        if (Global::instance().isSlaveMode()) {
+            stringstream str;
+            str << "Got move " << move.toString();
+            Global::instance().log(str.str());
+        }
 		printf("\n");
 		break;
 	}

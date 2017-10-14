@@ -2,6 +2,8 @@
 #define CHESS_BOARD_H_INCLUDED
 
 #include "chessplayer.h"
+#include <string>
+#include "global.h"
 
 // Pieces defined in lower 4 bits
 #define EMPTY	0x00	// Empty square
@@ -32,17 +34,15 @@
 #define IS_PROMOTED(x)    (0x80 & x)
 #define CLEAR_PROMOTED(x) (x & 0x7f)
 
-// Constants to compare with the macros
-#define WHITE 0x00
-#define BLACK 0x10
-#define TOGGLE_COLOR(x) (0x10 ^ x)
 
 struct Move
 {
 	/*
 	* Prints sth. like "Black queen from D8 to D7."
 	*/
-	void print(void) const;
+    void print(void) const;
+
+    std::string toString(void) const;
 	
 	/*
 	* True if moves are equal.

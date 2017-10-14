@@ -26,7 +26,9 @@ class AIPlayer: public ChessPlayer {
 		/*
 		* Ask player what to do next
 		*/
-		bool getMove(ChessBoard & board, Move & move) const;
+        bool getMove(ChessBoard & board, Move & move) const override;
+
+        bool showMove(ChessBoard & board, Move & move) override {return true;}
 
 		/*
 		* MinMax search for best possible outcome

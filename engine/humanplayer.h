@@ -4,7 +4,7 @@
 #include "chessplayer.h"
 
 class ChessBoard;
-class Move;
+struct Move;
 
 class HumanPlayer: public ChessPlayer {
 
@@ -17,7 +17,10 @@ class HumanPlayer: public ChessPlayer {
 		/*
 		* Ask player what to do
 		*/
-		bool getMove(ChessBoard & board, Move & move) const;
+        virtual bool getMove(ChessBoard & board, Move & move) const override;
+
+        virtual bool showMove(ChessBoard & board, Move & move) override {return true;}
+
 		
 		/*
 		* Read input from stdin
@@ -28,7 +31,6 @@ class HumanPlayer: public ChessPlayer {
 		* Process input. Frees buffer allocated by readInput()
 		*/
 		bool processInput(char * buf, Move & move) const;
-
 };
 
 #endif
