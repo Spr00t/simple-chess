@@ -20,7 +20,7 @@ endif()
 
 set (CMAKE_CXX_STANDARD 14)
 
-message(BOOST is here: ${Boost_INCLUDE_DIRS})
+message("BOOST is here: ${Boost_INCLUDE_DIRS}")
 
 message("BOOST is here: ${Boost_LIBRARIES}")
 

@@ -6,6 +6,8 @@
 #include "chessboard.h"
 #include "chessplayer.h"
 
+#define COLORED
+using namespace boost;
 using boost::format;
 using boost::io::group;
 
@@ -26,6 +28,57 @@ string Move::toString(void) const
     str << format("%1%%2%") % field_name[(int)from] % field_name[(int)to];
     return str.str();
 }
+
+optional<Move> Move::fromString(const std::string & str)
+{
+    optional<Move> result;
+    result.reset(Move());
+    int i = 0, j, l, n;
+    string lineIn = str, lineOut="    ";
+    copy_if(lineIn.begin(), lineIn.end(), lineOut.begin(),
+        [](char c ) {
+            return ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'));
+        });
+
+    if (lineIn != lineOut) {
+        Global::instance().log("Gotcha");
+    }
+
+//    if(strncmp(&buf[i], "quit", 4) == 0)
+//        exit(0);
+
+    // convert from sth. like "b1c3"
+    for(j = 0; j < 2; j++) {
+
+        l = lineOut[i++];
+        n = lineOut[i++];
+        if(l >= 'a' && l <= 'h') {
+            l = l - 'a';
+        }
+        else if(l >= 'A' && l <= 'H') {
+            l = l - 'A';
+        }
+        else {
+            result.reset();
+            break;
+        }
+        if(n >= '1' && n <= '8') {
+            n = n - '1';
+        }
+        else {
+            result.reset();
+            break;
+        }
+
+        if(j == 0)
+            result->from = n * 8 + l;
+        else
+            result->to = n * 8 + l;
+    }
+
+    return result;
+}
+
 void Move::print(void) const {
 
 
@@ -79,7 +132,7 @@ ChessBoard::ChessBoard()
 	memset((void*)square, EMPTY, sizeof(square));
 }
 
-void ChessBoard::print(void) const
+void ChessBoard::print(Move move) const
 {
 	char figure;
 	int repr, unmoved, passant, row, col;
@@ -94,6 +147,19 @@ void ChessBoard::print(void) const
 			repr = getASCIIrepr(figure);
 			unmoved = (IS_MOVED(figure) || (figure == EMPTY)) ? ' ' : '.';
 			passant = IS_PASSANT(figure) ? '`' : ' ';
+#ifdef COLORED
+            static const char RED_COLOR[]="\033[0;31m";
+            static const char GREEN_COLOR[]="\033[0;31m";
+            static const char NO_COLOR[]="\033[0m";
+            if (move.figure && row*8+col == move.to) {
+                printf("|%c%s%c%s%c", unmoved, RED_COLOR, repr, NO_COLOR, passant);
+            } else if (move.figure && row*8+col == move.from) {
+                if (!figure) {
+                    repr = '.';
+                }
+                printf("|%c%s%c%s%c", unmoved, GREEN_COLOR, repr, NO_COLOR, passant);
+            } else
+#endif
 			printf("|%c%c%c", unmoved, repr, passant);
 		}
 		printf("|\n%d |___|___|___|___|___|___|___|___|\n  ", row + 1);
@@ -1322,6 +1388,9 @@ bool ChessBoard::isValidMove(int color, Move & move)
 
 ChessPlayer::Status ChessBoard::getPlayerStatus(int color)
 {
+    if (fifty_moves <= 0) {
+        return ChessPlayer::Draw;
+    }
 	bool king_vulnerable = false, can_move = false;
 	list<Move> regulars, nulls;
 
@@ -1352,6 +1421,14 @@ ChessPlayer::Status ChessBoard::getPlayerStatus(int color)
 
 void ChessBoard::move(const Move & move)
 {
+    if (move.capture || (FIGURE(move.figure) == PAWN)) {
+        if (move.to != move.from) {
+            fifty_moves_stack.push_back(fifty_moves);
+            fifty_moves = 50;
+        }
+    } else {
+        fifty_moves--;
+    }
 	// kings and pawns receive special treatment
 	switch(FIGURE(move.figure))
 	{
@@ -1359,6 +1436,7 @@ void ChessBoard::move(const Move & move)
 			moveKing(move);
 			break;
 		case PAWN:
+            fifty_moves = 50;
 			if(move.to != move.from) {
 				movePawn(move);
 				break;
@@ -1372,6 +1450,14 @@ void ChessBoard::move(const Move & move)
 
 void ChessBoard::undoMove(const Move & move)
 {
+    if (move.capture || FIGURE(move.figure) == PAWN) {
+        if (move.to != move.from) {
+            fifty_moves = fifty_moves_stack.back();
+            fifty_moves_stack.pop_back();
+        }
+    } else {
+        fifty_moves++;
+    }
 	// kings and pawns receive special treatment
 	switch(FIGURE(move.figure))
 	{

@@ -50,20 +50,19 @@ int main(int argc, char *argv[]) {
     if (slave_mode) {
         if (my_color == BLACK) {
             black = make_unique<AIPlayer>(BLACK, 3);
-            white = make_unique<HumanPlayer>(WHITE);
+            white = make_unique<HumanPlayer>(WHITE, slave_mode);
         } else {
-            black = make_unique<HumanPlayer>(BLACK);
+            black = make_unique<HumanPlayer>(BLACK, slave_mode);
             white = make_unique<AIPlayer>(WHITE, 3);
         }
     } else {
         black = make_unique<AIPlayer>(BLACK, 3);
-        white = make_unique<HumanPlayer>(WHITE);
+        white = make_unique<HumanPlayer>(WHITE, slave_mode);
     }
 
 	// setup board
 	board.initDefaultSetup();
 
-    Global::instance().setSlaveMode(slave_mode);
     Global::instance().setColor(my_color);
 
 	for(;;) {
@@ -78,9 +77,6 @@ int main(int argc, char *argv[]) {
             found = white->getMove(board, mov);
 		else
             found = black->getMove(board, mov);
-
-
-
 
 
 		if(!found)

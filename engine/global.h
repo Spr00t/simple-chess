@@ -1,6 +1,7 @@
 #pragma once
 #include <fstream>
 #include <string>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 // Constants to compare with the macros
 #define WHITE 0x00
@@ -10,15 +11,13 @@
 class Global
 {
 public:
-    void setSlaveMode(bool);
-    bool isSlaveMode() const;
-
+    Global();
     void setColor(int color);
     void log(const std::string & str);
     static Global& instance();
     int color = -1;
     std::fstream file;
-    bool slave_mode = false;
-
+    boost::posix_time::ptime start;
 public:
+
 };

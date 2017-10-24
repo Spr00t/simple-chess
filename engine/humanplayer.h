@@ -1,6 +1,8 @@
 #ifndef HUMAN_PLAYER_H_INCLUDED
 #define HUMAN_PLAYER_H_INCLUDED
 
+#include <string>
+#include <boost/optional.hpp>
 #include "chessplayer.h"
 
 class ChessBoard;
@@ -10,7 +12,7 @@ class HumanPlayer: public ChessPlayer {
 
 	public:
 	
-		HumanPlayer(int color);
+        HumanPlayer(int color, bool slaveMode);
 		
 		~HumanPlayer();
 		
@@ -25,12 +27,14 @@ class HumanPlayer: public ChessPlayer {
 		/*
 		* Read input from stdin
 		*/
-		char * readInput(void) const;
+        std::string readInput() const;
 		
 		/*
 		* Process input. Frees buffer allocated by readInput()
 		*/
-		bool processInput(char * buf, Move & move) const;
+        bool processInput(const std::string &buf, Move & move) const;
+private:
+        bool slaveMode;
 };
 
 #endif

@@ -43,10 +43,10 @@ int PlayChamp::Run(int argc, char *argv[])
 
     // setup board
     board.initDefaultSetup();
-
+    Move last_move = EMPTY_MOVE;
     for(;;) {
         // show board
-        board.print();
+        board.print(last_move);
 
         // query player's choice
         if(turn == WHITE) {
@@ -77,6 +77,7 @@ int PlayChamp::Run(int argc, char *argv[])
 
         // execute move
         board.move(move);
+        last_move = move;
         move.print();
 
         // opponents turn
@@ -87,14 +88,18 @@ int PlayChamp::Run(int argc, char *argv[])
         switch(status)
         {
             case ChessPlayer::Checkmate:
-                board.print();
+                board.print(last_move);
                 cout << "Checkmate: " << (turn == WHITE ? "white" : "black") << " are defeated" << endl;
                 return 0;
             case ChessPlayer::Stalemate:
-                board.print();
-                cout << "Stalemate: " << (turn == WHITE ? "white" : "black") << " are defeated" << endl;
-
+                board.print(last_move);
+                cout << "Stalemate: on " << (turn == WHITE ? "white" : "black") << " turn" << endl;
                 return 0;
+            case ChessPlayer::Draw:
+                board.print(last_move);
+                cout << "50 moves end game: on " << (turn == WHITE ? "white" : "black") << " turn" << endl;
+                return 0;
+
             default:
                 continue;
         }

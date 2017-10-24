@@ -7,6 +7,8 @@
 
 using namespace std;
 
+
+static const int QUISCENT_DEPTH = 4;
 AIPlayer::AIPlayer(int color, int search_depth)
  : ChessPlayer(color),
    search_depth(search_depth)
@@ -78,17 +80,23 @@ bool AIPlayer::getMove(ChessBoard & board, Move & move) const
 	}
 }
 
-int AIPlayer::evalAlphaBeta(ChessBoard & board, int color, int search_depth, int alpha, int beta, bool quiescent) const
+int AIPlayer::evalAlphaBeta(ChessBoard & board, int color, int search_depth, int alpha, int beta, bool quiescent_search) const
 {
 	list<Move> regulars, nulls;
-	int best, tmp;
-
-	if(search_depth <= 0 && !quiescent) {
+    int best, tmp;
+    bool long_depth = false;
+    if(search_depth <= 0 && !quiescent_search) {
 		if(color)
 			return -evaluateBoard(board);
 		else
 			return +evaluateBoard(board);
-	}
+    } else if (quiescent_search && search_depth <= -QUISCENT_DEPTH) {
+        //limit maximum recursion
+        // return some neutral value
+        return 0;
+    } else if (quiescent_search && search_depth <= 0) {
+        long_depth = true;
+    }
 
 	// first assume we are loosing
 	best = -WIN_VALUE;
@@ -99,24 +107,35 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, int color, int search_depth, int
 	// execute maintenance moves
 	for(list<Move>::iterator it = nulls.begin(); it != nulls.end(); ++it)
 		board.move(*it);
-	
+
+    // assume we have a state_mate
+    bool stalemate = true;
 	// loop over all moves
 	for(list<Move>::iterator it = regulars.begin();
 		alpha <= beta && it != regulars.end(); ++it)
 	{
+        if (long_depth && it->capture == EMPTY) {
+            // in long depth ignore non accuiring moves
+            continue;
+        }
 		// execute move
-		board.move(*it);
+        board.move(*it);
 
 		// check if own king is vulnerable now
 		if(!board.isVulnerable((color ? board.black_king_pos : board.white_king_pos), color)) {
-
+            stalemate = false;
+            bool quiescent = false;
 			if((*it).capture == EMPTY)
-				quiescent = false;
+                quiescent = false;
             else
                 quiescent = true;
 
-			// recursion 'n' pruning
-			tmp = -evalAlphaBeta(board, TOGGLE_COLOR(color), search_depth - 1, -beta, -alpha, quiescent);
+            if (board.fifty_moves <= 0) {
+                tmp = 0;
+            } else {
+                // recursion 'n' pruning
+                tmp = -evalAlphaBeta(board, TOGGLE_COLOR(color), search_depth - 1, -beta, -alpha, quiescent);
+            }
 			if(tmp > best) {
 				best = tmp;
 				if(tmp > alpha) {
@@ -124,6 +143,7 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, int color, int search_depth, int
 				}
 			}
 		}
+
 
 		// undo move and inc iterator
 		board.undoMove(*it);
@@ -133,7 +153,8 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, int color, int search_depth, int
 	for(list<Move>::iterator it = nulls.begin(); it != nulls.end(); ++it)
 		board.undoMove(*it);
 	
-	return best;
+    //stalemate is not so bad :)
+    return stalemate == true ? 0 : best;
 }
 
 int AIPlayer::evaluateBoard(const ChessBoard & board) const

@@ -3,6 +3,8 @@
 
 #include "chessplayer.h"
 #include <string>
+#include <boost/optional.hpp>
+
 #include "global.h"
 
 // Pieces defined in lower 4 bits
@@ -43,16 +45,20 @@ struct Move
     void print(void) const;
 
     std::string toString(void) const;
+    static boost::optional<Move> fromString(const std::string & str);
 	
 	/*
 	* True if moves are equal.
 	*/
 	bool operator==(const Move & b) const;
 
-	char figure;	// figure which is moved
+    char figure;	// figure which is moved
 	char from, to;	// board is seen one-dimensional
 	char capture;	// piece that resides at destination square
 };
+static const Move EMPTY_MOVE = {0, 0, 0, 0};
+
+
 
 struct ChessBoard
 {
@@ -72,7 +78,7 @@ struct ChessBoard
 	/*
 	* Print ASCII representation of board.
 	*/
-	void print(void) const;
+    void print(Move move=EMPTY_MOVE) const;
 
 	/*
 	* Returns an ASCII char representing the figure.
@@ -165,6 +171,9 @@ struct ChessBoard
 	// to keep track of the kings
 	char black_king_pos;
 	char white_king_pos;
+
+    int fifty_moves = 50;
+    std::vector<int> fifty_moves_stack;
 };
 
 #endif

@@ -2,19 +2,25 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <algorithm>
 #include <iostream>
 #include "consoleopponent.h"
 #include "chessboard.h"
+
+using namespace boost;
 using namespace boost::process;
 using namespace std;
 
 ConsoleOpponent::ConsoleOpponent(const std::string &path, int color)
     : ChessPlayer(color),
-      color(color),
-      process(path, "--slave", color == WHITE ? "white" : "black", std_out > pipe_out, std_in < pipe_in)
+      color(color)
 {
-
+    if (color == WHITE) {
+        process = child(path, "--slave", color == WHITE ? "white" : "black", std_out > pipe_out, std_in < pipe_in);
+    } else {
+        process = child(path, "--slave", color == WHITE ? "white" : "black", std_out > pipe_out, std_in < pipe_in);
+        //process = child("valgrind",  "--tool=callgrind", path, "--slave", color == WHITE ? "white" : "black", std_out > pipe_out, std_in < pipe_in);
+    }
 }
 
 bool ConsoleOpponent::getMove(ChessBoard &board, Move &move) const
@@ -25,6 +31,16 @@ bool ConsoleOpponent::getMove(ChessBoard &board, Move &move) const
         // skip empty line
     }
     if (!line.empty()) {
+        string lineIn = line, lineOut="    ";
+        copy_if(lineIn.begin(), lineIn.end(), lineOut.begin(),
+            [](char c ) {
+                return ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'));
+            });
+
+        if (lineIn != lineOut) {
+            Global::instance().log("Gotcha");
+        }
+
         processInput(line, move);
         move.figure = board.square[move.from];
         return true;
@@ -41,37 +57,11 @@ bool ConsoleOpponent::showMove(ChessBoard &board, Move &move)
 
 bool ConsoleOpponent::processInput(const string& buf, Move & move) const
 {
-    int i = 0, j, l, n;
-
-
-    if(strncmp(&buf[i], "quit", 4) == 0)
-        exit(0);
-
-    // convert from sth. like "b1c3"
-    for(j = 0; j < 2; j++) {
-
-        l = buf[i++];
-        n = buf[i++];
-        if(l >= 'a' && l <= 'h') {
-            l = l - 'a';
-        }
-        else if(l >= 'A' && l <= 'H') {
-            l = l - 'A';
-        }
-        else {
-            return false;
-        }
-        if(n >= '1' && n <= '8') {
-            n = n - '1';
-        }
-        else {
-            return false;
-        }
-        if(j == 0)
-            move.from = n * 8 + l;
-        else
-            move.to = n * 8 + l;
+    optional<Move> opt = Move::fromString(buf);
+    if (opt) {
+         move = *opt;
+         return true;
     }
 
-    return true;
+    return false;
 }

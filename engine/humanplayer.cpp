@@ -9,10 +9,11 @@
 #include "global.h"
 
 using namespace std;
-#define NOT !
+using namespace boost;
 
-HumanPlayer::HumanPlayer(int color)
- : ChessPlayer(color)
+HumanPlayer::HumanPlayer(int color, bool slaveMode)
+ : ChessPlayer(color),
+   slaveMode(slaveMode)
 {}
 
 HumanPlayer::~HumanPlayer()
@@ -21,10 +22,10 @@ HumanPlayer::~HumanPlayer()
 bool HumanPlayer::getMove(ChessBoard & board, Move & move) const
 {
 	list<Move> regulars, nulls;
-	char * input;
+    string input;
 
 	for(;;) {
-        if (NOT Global::instance().isSlaveMode()) {
+        if (NOT slaveMode) {
             printf(">> ");
         } else {
             stringstream str;
@@ -32,15 +33,12 @@ bool HumanPlayer::getMove(ChessBoard & board, Move & move) const
             Global::instance().log(str.str());
         }
 
-
-        if((input = readInput()) == NULL) {
-            Global::instance().log("Could not read input.");
-			continue;
-		}
+        input = readInput();
 
 		if(!processInput(input, move)) {
-
-            Global::instance().log("Error while parsing input.");
+            stringstream str;
+            str << "Error while parsing input:" << input;
+            Global::instance().log(str.str());
 			continue;
 		}
 
@@ -51,103 +49,39 @@ bool HumanPlayer::getMove(ChessBoard & board, Move & move) const
             Global::instance().log(str.str());
 			continue;
 		}
-        if (Global::instance().isSlaveMode()) {
+        if (slaveMode) {
             stringstream str;
             str << "Got move " << move.toString();
             Global::instance().log(str.str());
         }
-		printf("\n");
+        if (NOT slaveMode)
+            printf("\n");
 		break;
 	}
 
 	return true;
 }
 
-char * HumanPlayer::readInput(void) const
+string HumanPlayer::readInput() const
 {
-	int buffsize = 8, c, i;
-	char * buffer, * tmp;
-	
-	// allocate buffer
-	buffer = reinterpret_cast<char*>(malloc(buffsize));
-	if(!buffer)	{
-		return NULL;
-	}
-	
-	// read one line
-	for(i = 0; (c = fgetc(stdin)) != '\n'; i++)	{
-		if(i >= buffsize - 1) {
-			if((buffsize << 1) < buffsize) {
-				fprintf(stderr, "HumanPlayer::readInput(): " \
-					"Someone is trying a buffer overrun.\n");
-				free(buffer);
-				return NULL;
-			}
-			tmp = reinterpret_cast<char*>(realloc(buffer, buffsize<<1));
-			if(!tmp) {
-				free(buffer);
-				return NULL;
-			}
-			buffer = tmp;
-			buffsize <<= 1;
-		}
-		buffer[i] = c;
-	}
-	
-	// terminate buffer
-	buffer[i] = '\0';
-	return buffer;	
+    string line;
+    while (line == "") {
+            cin >> line;
+    }
+    return line;
 }
 
-bool HumanPlayer::processInput(char * buf, Move & move) const
+bool HumanPlayer::processInput(const string & buf, Move & move) const
 {
-	int i = 0, j, l, n;
 
-	// skip whitespace
-	while(true) {
-		if(buf[i] == '\0') {
-			free(buf);
-			return false;
-		}
-		else if(!isspace(buf[i])) {
-			break;
-		}
-		else {
-			i++;
-		}
-	}
-
-	if(strncmp(&buf[i], "quit", 4) == 0)
+    if (buf == "quit")
 		exit(0);
 
-	// convert from sth. like "b1c3"	
-	for(j = 0; j < 2; j++) {
+    optional<Move> opt = Move::fromString(buf);
+    if (opt) {
+         move = *opt;
+         return true;
+    }
 
-		l = buf[i++];
-		n = buf[i++];
-		if(l >= 'a' && l <= 'h') {
-			l = l - 'a';
-		}
-		else if(l >= 'A' && l <= 'H') {
-			l = l - 'A';
-		}
-		else {
-			free(buf);
-			return false;
-		}
-		if(n >= '1' && n <= '8') {
-			n = n - '1';
-		}
-		else {
-			free(buf);
-			return false;
-		}
-		if(j == 0)
-			move.from = n * 8 + l;
-		else 
-			move.to = n * 8 + l;
-	}
-
-	free(buf);
-	return true;
+    return false;
 }
