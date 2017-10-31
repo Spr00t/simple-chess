@@ -1,8 +1,8 @@
-#ifndef CHESS_BOARD_H_INCLUDED
-#define CHESS_BOARD_H_INCLUDED
+#pragma once
 
 #include "chessplayer.h"
 #include <string>
+#include <list>
 #include <boost/optional.hpp>
 
 #include "global.h"
@@ -22,8 +22,10 @@
 // Attributes reside in upper 4 bits
 #define SET_BLACK(x) (x | 0x10)
 #define IS_BLACK(x)  (0x10 & x)
+#define OPPOSITE(x)  (0x10 ^ x)
 
-#define SET_MOVED(x) (x | 0x20)
+#define SET_MOVED(x)  (x | 0x20)
+#define SET_UNMOVED(x) (x & ~0x20)
 #define IS_MOVED(x)  (0x20 & x)
 
 // For pawn en passant candidates
@@ -58,28 +60,32 @@ struct Move
 };
 static const Move EMPTY_MOVE = {0, 0, 0, 0};
 
+enum Position {
+    A1 = 0, B1, C1, D1, E1, F1, G1, H1,
+    A2, B2, C2, D2, E2, F2, G2, H2,
+    A3, B3, C3, D3, E3, F3, G3, H3,
+    A4, B4, C4, D4, E4, F4, G4, H4,
+    A5, B5, C5, D5, E5, F5, G5, H5,
+    A6, B6, C6, D6, E6, F6, G6, H6,
+    A7, B7, C7, D7, E7, F7, G7, H7,
+    A8, B8, C8, D8, E8, F8, G8, H8
+};
 
 
 struct ChessBoard
 {
-	enum Position {
-		A1 = 0, B1, C1, D1, E1, F1, G1, H1,
-		A2, B2, C2, D2, E2, F2, G2, H2,
-		A3, B3, C3, D3, E3, F3, G3, H3,
-		A4, B4, C4, D4, E4, F4, G4, H4,
-		A5, B5, C5, D5, E5, F5, G5, H5,
-		A6, B6, C6, D6, E6, F6, G6, H6,
-		A7, B7, C7, D7, E7, F7, G7, H7,
-		A8, B8, C8, D8, E8, F8, G8, H8
-	};
 
 	ChessBoard();
 
-	/*
+    /*
 	* Print ASCII representation of board.
 	*/
     void print(Move move=EMPTY_MOVE) const;
 
+    /*
+    * Load standartised FEN annotation
+    */
+    void loadFEN(const std::string &position);
 	/*
 	* Returns an ASCII char representing the figure.
 	*/
@@ -90,47 +96,15 @@ struct ChessBoard
 	*/
 	void initDefaultSetup(void);
 
-	/*
-	* Generates all moves for one side.
-	*/
-	void getMoves(int color, std::list<Move> & moves,
-		std::list<Move> & captures, std::list<Move> & null_moves);
+    /*
+    * Updates internal figures count
+    */
+    void refreshFigures();
 
-	/*
-	* All possible moves for a pawn piece.
-	*/
-	void getPawnMoves(int figure, int pos, std::list<Move> & moves,
-		std::list<Move> & captures, std::list<Move> & null_moves) const;
-	
-	/*
-	* All possible moves for a rook piece.
-	*/
-	void getRookMoves(int figure, int pos, std::list<Move> & moves,
-		std::list<Move> & captures) const;
-	
-	/*
-	* All possible moves for a knight piece.
-	*/
-	void getKnightMoves(int figure, int pos, std::list<Move> & moves,
-		std::list<Move> & captures) const;
-	
-	/*
-	* All possible moves for a bishop piece.
-	*/
-	void getBishopMoves(int figure, int pos, std::list<Move> & moves,
-		std::list<Move> & captures) const;
-	
-	/*
-	* All possible moves for a queen piece.
-	*/
-	void getQueenMoves(int figure, int pos, std::list<Move> & moves,
-		std::list<Move> & captures) const;
+    void toogleColor() {
+        next_move_color = TOGGLE_COLOR(next_move_color);
+    }
 
-	/*
-	* All possible moves for a king piece.
-	*/
-	void getKingMoves(int figure, int pos, std::list<Move> & moves,
-		std::list<Move> & captures);
 
 	/*
 	* Returns true, if the square given by pos is vulnerable to the opponent.
@@ -165,6 +139,19 @@ struct ChessBoard
 	void moveKing(const Move & move);
 	void undoMoveKing(const Move & move);
 
+    int black_figures_count() const {
+        return figures_count[1];
+    }
+    int white_figures_count() const {
+        return figures_count[0];
+    }
+    int get_figures_count(int color) const {
+        return figures_count[IS_BLACK(color) >> 8];
+    }
+    int get_all_figures_count() const {
+        return figures_count[0] + figures_count[1];
+    }
+
 	// THE BOARD ITSELF
 	char square[8*8];
 
@@ -174,6 +161,55 @@ struct ChessBoard
 
     int fifty_moves = 50;
     std::vector<int> fifty_moves_stack;
+    int figures_count[2] = {0, 0};
+
+    int next_move_color = WHITE;
+
+};
+template<bool capture_only>
+class MoveGenerator {
+public:
+    /*
+    * Generates all moves for one side.
+    */
+   static void getMoves(ChessBoard & board, int color, std::list<Move> & moves,
+        std::list<Move> & captures, std::list<Move> & null_moves);
+
+    /*
+    * All possible moves for a pawn piece.
+    */
+    static void getPawnMoves(ChessBoard & board, int figure, int pos, std::list<Move> & moves,
+        std::list<Move> & captures, std::list<Move> & null_moves);
+
+    /*
+    * All possible moves for a rook piece.
+    */
+    static void getRookMoves(ChessBoard & board, int figure, int pos, std::list<Move> & moves,
+        std::list<Move> & captures);
+
+    /*
+    * All possible moves for a knight piece.
+    */
+    static void getKnightMoves(ChessBoard & board, int figure, int pos, std::list<Move> & moves,
+        std::list<Move> & captures);
+
+    /*
+    * All possible moves for a bishop piece.
+    */
+    static void getBishopMoves(ChessBoard & board, int figure, int pos, std::list<Move> & moves,
+        std::list<Move> & captures);
+
+    /*
+    * All possible moves for a queen piece.
+    */
+    static void getQueenMoves(ChessBoard & board, int figure, int pos, std::list<Move> & moves,
+        std::list<Move> & captures);
+
+    /*
+    * All possible moves for a king piece.
+    */
+    static void getKingMoves(ChessBoard & board, int figure, int pos, std::list<Move> & moves,
+        std::list<Move> & captures);
 };
 
-#endif
+

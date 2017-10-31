@@ -8,6 +8,8 @@
 #define BLACK 0x10
 #define TOGGLE_COLOR(x) (0x10 ^ x)
 #define NOT !
+//#define TRACE
+
 class Global
 {
 public:

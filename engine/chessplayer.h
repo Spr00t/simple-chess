@@ -28,7 +28,7 @@ class ChessPlayer
 		/*
 		* Guess what...
 		*/
-		int color;
+        int color;
 };
 
 #endif

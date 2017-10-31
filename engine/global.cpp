@@ -36,6 +36,7 @@ void Global::log(const string &str)
              << setw(3)
              << milliseconds
              << "] " << str << endl;
+        file.flush();
     } else {
         cout << str << endl;
     }

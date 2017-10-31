@@ -33,7 +33,6 @@ int PlayChamp::Run(int argc, char *argv[])
 
     ChessBoard board;
     list<Move> regulars, nulls;
-    int turn = WHITE;
     Move move;
     bool found;
 
@@ -49,7 +48,7 @@ int PlayChamp::Run(int argc, char *argv[])
         board.print(last_move);
 
         // query player's choice
-        if(turn == WHITE) {
+        if(board.next_move_color == WHITE) {
             found = white.getMove(board, move);
             black.showMove(board, move);
         }
@@ -61,7 +60,7 @@ int PlayChamp::Run(int argc, char *argv[])
         if(!found)
             break;
 
-        if (NOT board.isValidMove(turn, move)) {
+        if (NOT board.isValidMove(board.next_move_color, move)) {
             cout << "Invalid move " << move.toString() << endl;
             return 0;
         }
@@ -69,7 +68,7 @@ int PlayChamp::Run(int argc, char *argv[])
         // if player has a move get all moves
         regulars.clear();
         nulls.clear();
-        board.getMoves(turn, regulars, regulars, nulls);
+        MoveGenerator<false>::getMoves(board, board.next_move_color, regulars, regulars, nulls);
 
         // execute maintenance moves
         for(list<Move>::iterator it = nulls.begin(); it != nulls.end(); ++it)
@@ -80,24 +79,21 @@ int PlayChamp::Run(int argc, char *argv[])
         last_move = move;
         move.print();
 
-        // opponents turn
-        turn = TOGGLE_COLOR(turn);
-
-        ChessPlayer::Status status = board.getPlayerStatus(turn);
+        ChessPlayer::Status status = board.getPlayerStatus(board.next_move_color);
 
         switch(status)
         {
             case ChessPlayer::Checkmate:
                 board.print(last_move);
-                cout << "Checkmate: " << (turn == WHITE ? "white" : "black") << " are defeated" << endl;
+                cout << "Checkmate: " << (board.next_move_color == WHITE ? "white" : "black") << " are defeated" << endl;
                 return 0;
             case ChessPlayer::Stalemate:
                 board.print(last_move);
-                cout << "Stalemate: on " << (turn == WHITE ? "white" : "black") << " turn" << endl;
+                cout << "Stalemate: on " << (board.next_move_color == WHITE ? "white" : "black") << " turn" << endl;
                 return 0;
             case ChessPlayer::Draw:
                 board.print(last_move);
-                cout << "50 moves end game: on " << (turn == WHITE ? "white" : "black") << " turn" << endl;
+                cout << "50 moves end game: on " << (board.next_move_color == WHITE ? "white" : "black") << " turn" << endl;
                 return 0;
 
             default:

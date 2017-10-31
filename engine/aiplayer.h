@@ -2,6 +2,9 @@
 #define AI_PLAYER_H_INCLUDED
 
 #include "chessplayer.h"
+#include <global.h>
+#include <list>
+
 
 // Pieces' values
 #define WIN_VALUE  50000	// win the game
@@ -33,7 +36,12 @@ class AIPlayer: public ChessPlayer {
 		/*
 		* MinMax search for best possible outcome
 		*/ 
-		int evalAlphaBeta(ChessBoard & board, int color, int depth, int alpha, int beta, bool quiescent) const;
+        int evalAlphaBeta(ChessBoard & board, int depth, int alpha, int beta, bool quiescent
+#ifdef TRACE
+                          , std::list<Move> * moved
+                          , std::list<Move> * best
+#endif
+                          ) const;
 
 		/*
 		* For now, this checks only material
