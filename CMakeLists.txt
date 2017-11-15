@@ -3,13 +3,6 @@ cmake_minimum_required(VERSION 2.8.12)
 project(simple-chess)
 
 
-
-
-
-
-
-
-
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 set (CMAKE_BUILD_TYPE Debug)
@@ -17,21 +10,32 @@ set (CMAKE_BUILD_TYPE Debug)
 set(Boost_USE_STATIC_LIBS        ON) # only find static libs
 set(Boost_USE_MULTITHREADED      ON)
 set(Boost_USE_STATIC_RUNTIME    OFF)
-find_package(Boost COMPONENTS system)
-if(Boost_FOUND)
-    if (Boost_FIND_COMPONENTS)
-          message("Found Boost components:")
-          message("   ${Boost_FIND_COMPONENTS}")
-        endif()
-  include_directories(${Boost_INCLUDE_DIRS})
-endif()
 
+# Download and unpack boost at configure time
+	
 set (CMAKE_CXX_STANDARD 14)
 
-message("BOOST is here: ${Boost_INCLUDE_DIRS}")
+configure_file(CMakeLists.txt.boost.in boost-download/CMakeLists.txt)
+execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
+  RESULT_VARIABLE result
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/boost-download )
+if(result)
+  message(FATAL_ERROR "CMake step for boost failed: ${result}")
+endif()
+execute_process(COMMAND ${CMAKE_COMMAND} --build .
+  RESULT_VARIABLE result
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/boost-download )
+if(result)
+  message(FATAL_ERROR "Build step for boost failed: ${result}")
+endif()
 
-message("BOOST is here: ${Boost_LIBRARIES}")
+SET (BOOST_ROOT ${CMAKE_BINARY_DIR}/boost-build)
 
+find_package(Boost 1.65.1  REQUIRED COMPONENTS
+    system)
+if(Boost_FOUND )
+  include_directories(${Boost_INCLUDE_DIRS})
+endif()
 
 FILE(GLOB_RECURSE HEADER "*engine/*.h")
 #FILE(GLOB_RECURSE SRC "engine/*.cpp")
