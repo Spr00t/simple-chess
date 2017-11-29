@@ -18,6 +18,10 @@
 
 class ChessBoard;
 
+struct EvaluationInformation {
+
+};
+
 class AIPlayer: public ChessPlayer {
 
 	public:
@@ -29,6 +33,8 @@ class AIPlayer: public ChessPlayer {
 		/*
 		* Ask player what to do next
 		*/
+        bool getMove(ChessBoard & board, Move & move) const override;
+
         bool getMove(ChessBoard & board, Move & move) const override;
 
         bool showMove(ChessBoard & board, Move & move) override {return true;}

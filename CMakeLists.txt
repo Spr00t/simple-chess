@@ -11,25 +11,8 @@ set(Boost_USE_STATIC_LIBS        ON) # only find static libs
 set(Boost_USE_MULTITHREADED      ON)
 set(Boost_USE_STATIC_RUNTIME    OFF)
 
-# Download and unpack boost at configure time
-	
+
 set (CMAKE_CXX_STANDARD 14)
-
-configure_file(CMakeLists.txt.boost.in boost-download/CMakeLists.txt)
-execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
-  RESULT_VARIABLE result
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/boost-download )
-if(result)
-  message(FATAL_ERROR "CMake step for boost failed: ${result}")
-endif()
-execute_process(COMMAND ${CMAKE_COMMAND} --build .
-  RESULT_VARIABLE result
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/boost-download )
-if(result)
-  message(FATAL_ERROR "Build step for boost failed: ${result}")
-endif()
-
-SET (BOOST_ROOT ${CMAKE_BINARY_DIR}/boost-build)
 
 find_package(Boost 1.65.1  REQUIRED COMPONENTS
     system)
