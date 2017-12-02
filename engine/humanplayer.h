@@ -19,7 +19,7 @@ class HumanPlayer: public ChessPlayer {
 		/*
 		* Ask player what to do
 		*/
-        virtual bool getMove(ChessBoard & board, Move & move) const override;
+        virtual bool getMove(ChessBoard & board, Move & move, AdvancedMoveData * move_data) const override;
 
         virtual bool showMove(ChessBoard & board, Move & move) override {return true;}
 

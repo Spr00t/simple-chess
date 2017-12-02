@@ -23,7 +23,7 @@ class ConsoleOpponent : public ChessPlayer
         /*
         * Ask player what to do next
         */
-        virtual bool getMove(ChessBoard & board, Move & move) const override;
+        virtual bool getMove(ChessBoard & board, Move & move, AdvancedMoveData * move_data) const override;
 
         virtual bool showMove(ChessBoard & board, Move & move) override;
 

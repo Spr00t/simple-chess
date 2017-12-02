@@ -31,6 +31,7 @@ void test_fen() {
     board.loadFEN("8/8/3K4/8/3k4/5r2/8/8 b - -");
 
 
+    AdvancedMoveData advanced;
 
     list<Move> nulls;
     Move mov;
@@ -43,12 +44,13 @@ void test_fen() {
     Global::instance().setColor(BLACK);
 
     board.print();
+
     while (true) {
 
         if(board.next_move_color == WHITE)
-            found = white->getMove(board, mov);
+            found = white->getMove(board, mov, &advanced);
         else
-            found = black->getMove(board, mov);
+            found = black->getMove(board, mov, &advanced);
 
 
         if(!found)
@@ -113,15 +115,16 @@ int main(int argc, char *argv[]) {
 	bool found;
     unique_ptr<ChessPlayer> black;
     unique_ptr<ChessPlayer> white;
+    AdvancedMoveData advanced;
 
 	// Initialize players
 
     if (my_color == BLACK) {
-        black = make_unique<AIPlayer>(BLACK, 3);
+        black = make_unique<AIPlayer>(BLACK, 4);
         white = make_unique<HumanPlayer>(WHITE, slave_mode);
     } else {
         black = make_unique<HumanPlayer>(BLACK, slave_mode);
-        white = make_unique<AIPlayer>(WHITE, 3);
+        white = make_unique<AIPlayer>(WHITE, 4);
     }
 
 
@@ -139,9 +142,9 @@ int main(int argc, char *argv[]) {
 
 		// query player's choice
         if(board.next_move_color == WHITE)
-            found = white->getMove(board, mov);
+            found = white->getMove(board, mov, &advanced);
 		else
-            found = black->getMove(board, mov);
+            found = black->getMove(board, mov, &advanced);
 
 
 		if(!found)
@@ -172,6 +175,7 @@ int main(int argc, char *argv[]) {
 
         if (NOT slave_mode) {
             mov.print();
+            cout << "Move evaluation: " << advanced.board_evaluation << endl;
         }
 
 	}

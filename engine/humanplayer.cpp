@@ -19,7 +19,7 @@ HumanPlayer::HumanPlayer(int color, bool slaveMode)
 HumanPlayer::~HumanPlayer()
 {}
 
-bool HumanPlayer::getMove(ChessBoard & board, Move & move) const
+bool HumanPlayer::getMove(ChessBoard & board, Move & move, AdvancedMoveData * move_data) const
 {
 	list<Move> regulars, nulls;
     string input;

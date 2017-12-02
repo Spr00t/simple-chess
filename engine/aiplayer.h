@@ -19,7 +19,14 @@
 class ChessBoard;
 
 struct EvaluationInformation {
-
+    int depth = 0;
+    int alpha = 0;
+    int beta = 0;
+    bool quiescent = 0;
+    #ifdef TRACE
+    std::list<Move> * moved = NULL;
+    std::list<Move> * best = NULL;
+    #endif
 };
 
 class AIPlayer: public ChessPlayer {
@@ -33,21 +40,14 @@ class AIPlayer: public ChessPlayer {
 		/*
 		* Ask player what to do next
 		*/
-        bool getMove(ChessBoard & board, Move & move) const override;
-
-        bool getMove(ChessBoard & board, Move & move) const override;
+        bool getMove(ChessBoard & board, Move & move, AdvancedMoveData * move_data) const override;
 
         bool showMove(ChessBoard & board, Move & move) override {return true;}
 
 		/*
 		* MinMax search for best possible outcome
 		*/ 
-        int evalAlphaBeta(ChessBoard & board, int depth, int alpha, int beta, bool quiescent
-#ifdef TRACE
-                          , std::list<Move> * moved
-                          , std::list<Move> * best
-#endif
-                          ) const;
+        int evalAlphaBeta(ChessBoard & board, EvaluationInformation * info) const;
 
 		/*
 		* For now, this checks only material
@@ -59,7 +59,7 @@ class AIPlayer: public ChessPlayer {
 		/*
 		* how deep to min-max
 		*/
-		int search_depth;
+        int ai_depth;
 };
 
 #endif

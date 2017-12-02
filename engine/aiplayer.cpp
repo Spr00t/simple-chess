@@ -15,7 +15,7 @@ static const int QUISCENT_DEPTH = 6;
 #endif
 AIPlayer::AIPlayer(int color, int search_depth)
  : ChessPlayer(color),
-   search_depth(search_depth)
+   ai_depth(search_depth)
 {
 	srand(time(NULL));
 }
@@ -23,19 +23,24 @@ AIPlayer::AIPlayer(int color, int search_depth)
 AIPlayer::~AIPlayer()
 {}
 
-bool AIPlayer::getMove(ChessBoard & board, Move & move) const
+bool AIPlayer::getMove(ChessBoard & board, Move & move, AdvancedMoveData *move_data) const
 {
 	vector<Move> candidates;
     list<Move> regulars, simple, captures, nulls;
+    EvaluationInformation eval;
+
+
+    int best_value, tmp;
 
 #ifdef TRACE
     vector<list<Move>> best_chain_candidates;
     list<Move> chain, moved;
+    eval.moved = &moved;
+    eval.best= &chain;
 #endif
-    bool quiescent = false;
-    int best_value, tmp;
 
-    int target_depth = this->search_depth - 1;
+    eval.depth = ai_depth - 1;
+    eval.alpha = - WIN_VALUE;
 
     if (board.get_all_figures_count() < 10) {
         //target_depth++;
@@ -74,22 +79,18 @@ bool AIPlayer::getMove(ChessBoard & board, Move & move) const
         if(NOT previous_king_vulnerable) {
 
             if((*it).capture != EMPTY || previous_king_vulnerable || current_king_vulnerable)
-                quiescent = true;
+                eval.quiescent = true;
             else
-                quiescent = false;
+                eval.quiescent = false;
 
 #ifdef TRACE
             chain.clear();
             Global::instance().log(string("Try move: ") + it->toString());
 
 #endif
+            eval.beta = -best_value;
 			// recursion
-            tmp = -evalAlphaBeta(board, target_depth, -WIN_VALUE, -best_value, quiescent
-#ifdef TRACE
-                         ,&moved
-                         ,&chain
-#endif
-                                 );
+            tmp = -evalAlphaBeta(board, &eval);
 #ifdef TRACE
             stringstream sstr;
             Global::instance().log("=============================================");
@@ -134,6 +135,7 @@ bool AIPlayer::getMove(ChessBoard & board, Move & move) const
 	for(list<Move>::iterator it = nulls.begin(); it != nulls.end(); ++it)
 		board.undoMove(*it);
 
+    move_data->board_evaluation = best_value;
 	// loosing the game?
     if(best_value < -WIN_VALUE) {
 		return false;
@@ -161,12 +163,7 @@ bool AIPlayer::getMove(ChessBoard & board, Move & move) const
 	}
 }
 
-int AIPlayer::evalAlphaBeta(ChessBoard & board, int search_depth, int alpha, int beta, bool quiescent_search
-#ifdef TRACE
-                          , std::list<Move> * moved
-                          , std::list<Move> * best_chain
-#endif
-) const
+int AIPlayer::evalAlphaBeta(ChessBoard & board, EvaluationInformation * info) const
 {
 #ifdef TRACE
     list<Move> chain;
@@ -176,20 +173,20 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, int search_depth, int alpha, int
     int best_value, tmp;
 
     bool long_depth = false, checkmate;
-    if(search_depth <= 0 && !quiescent_search) {
+    if(info->depth <= 0 && !info->quiescent) {
 
         return +evaluateBoard(board);
-    } else if (quiescent_search && search_depth <= -QUISCENT_DEPTH) {
+    } else if (info->quiescent && info->depth <= -QUISCENT_DEPTH) {
         //limit maximum recursion
         return +evaluateBoard(board);
-    } else if (quiescent_search && search_depth <= 0) {
+    } else if (info->quiescent && info->depth <= 0) {
         long_depth = true;
     }
 
 	// first assume we are loosing
     best_value = -WIN_VALUE + 50 - board.fifty_moves; // in case we are winning lets win less moves
 
-    if (long_depth && !quiescent_search) {
+    if (long_depth && !info->quiescent) {
         // get only captures
         MoveGenerator<true>::getMoves(board, board.next_move_color, ignored, regulars, nulls);
     } else {
@@ -218,7 +215,7 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, int search_depth, int alpha, int
 
 	// loop over all moves
     for(list<Move>::iterator it = regulars.begin();
-		alpha <= beta && it != regulars.end(); ++it)
+        info->alpha <= info->beta && it != regulars.end(); ++it)
     {
 		// execute move
         board.move(*it);
@@ -277,12 +274,17 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, int search_depth, int alpha, int
             if (board.fifty_moves <= 0) {
                 tmp = 0;
             } else {
-                // recursion 'n' pruning
-                tmp = -evalAlphaBeta(board, search_depth - 1, -beta, -alpha, quiescent
+                EvaluationInformation nested_information;
+                nested_information.depth     = info->depth - 1;
+                nested_information.alpha     = - info->beta;
+                nested_information.beta      = - info->alpha;
+                nested_information.quiescent =  quiescent;
 #ifdef TRACE
-                                     , moved, &chain
+                nested_information.moved = &moved;
+                nested_information.best = &chain;
 #endif
-                                     );
+                // recursion 'n' pruning
+                tmp = -evalAlphaBeta(board, &nested_information);
             }
 #ifdef TRACE
             {
@@ -301,8 +303,8 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, int search_depth, int alpha, int
                 *best_chain = chain;
                 best_move = *it;
 #endif
-				if(tmp > alpha) {
-					alpha = tmp;
+                if(tmp > info->alpha) {
+                    info->alpha = tmp;
 				}
 			}
 		}
@@ -336,7 +338,7 @@ int AIPlayer::evaluateBoard(const ChessBoard & board) const
     static int br_counter = 0;
     br_counter ++;
     stringstream sstr;
-    sstr << "BREAK EV: " << br_counter;
+    //sstr << "BREAK EV: " << br_counter;
     if (false && br_counter == 9) {
         board.print();
         Global::instance().log("");

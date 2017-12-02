@@ -23,7 +23,7 @@ ConsoleOpponent::ConsoleOpponent(const std::string &path, int color)
     }
 }
 
-bool ConsoleOpponent::getMove(ChessBoard &board, Move &move) const
+bool ConsoleOpponent::getMove(ChessBoard &board, Move &move, AdvancedMoveData * move_data) const
 {
     string line;
     while (pipe_out && std::getline(pipe_out, line) && line.empty())

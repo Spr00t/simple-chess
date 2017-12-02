@@ -1638,7 +1638,8 @@ void ChessBoard::undoMove(const Move & move)
     }
     if (move.to != move.from) {
         toogleColor();
-    }}
+    }
+}
 
 void ChessBoard::movePawn(const Move & move)
 {

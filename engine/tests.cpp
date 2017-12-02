@@ -42,7 +42,8 @@ bool Tests::TestEvaluation()
         board.loadFEN(position);
         AIPlayer player(board.next_move_color, 3);
         Move move;
-        bool found = player.getMove(board, move);
+        AdvancedMoveData advanced;
+        bool found = player.getMove(board, move, &advanced);
         if (NOT found) return false;
         if (NOT (move.to == F6 && move.from == F3)) {
             return false;
@@ -63,7 +64,8 @@ bool Tests::TestCheckMateIn3HalfMoves()
 
         AIPlayer player(board.next_move_color, 4);
         Move move = EMPTY_MOVE;
-        bool found = player.getMove(board, move);
+        AdvancedMoveData advanced;
+        bool found = player.getMove(board, move, &advanced);
         if (NOT found) return false;
         if (NOT (move.to == B3 && move.from == D1)) {
             board.print(move);

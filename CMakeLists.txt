@@ -27,7 +27,9 @@ SET (SRC engine/chessboard.cpp
     engine/playchamp.cpp
     engine/aiplayer.cpp
     engine/consoleopponent.cpp
-    engine/humanplayer.cpp)
+    engine/humanplayer.cpp
+    engine/client.cpp
+    engine/config.cpp)
 
 include_directories("engine")
 

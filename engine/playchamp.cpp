@@ -31,6 +31,7 @@ int PlayChamp::Run(int argc, char *argv[])
 
     }
 
+    AdvancedMoveData advaced;
     ChessBoard board;
     list<Move> regulars, nulls;
     Move move;
@@ -49,11 +50,11 @@ int PlayChamp::Run(int argc, char *argv[])
 
         // query player's choice
         if(board.next_move_color == WHITE) {
-            found = white.getMove(board, move);
+            found = white.getMove(board, move, &advaced);
             black.showMove(board, move);
         }
         else {
-            found = black.getMove(board, move);
+            found = black.getMove(board, move, &advaced);
             white.showMove(board, move);
         }
 

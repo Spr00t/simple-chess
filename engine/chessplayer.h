@@ -3,7 +3,10 @@
 
 class ChessBoard;
 struct Move;
-
+struct AdvancedMoveData
+{
+    int board_evaluation = 0;
+};
 class ChessPlayer
 {
 	public:
@@ -19,7 +22,7 @@ class ChessPlayer
 		/*
 		* Ask player what to do next
 		*/
-		virtual bool getMove(ChessBoard & board, Move & move) const = 0;
+        virtual bool getMove(ChessBoard & board, Move & move, AdvancedMoveData * move_data) const = 0;
         virtual bool showMove(ChessBoard & board, Move & move) = 0;
 
 
