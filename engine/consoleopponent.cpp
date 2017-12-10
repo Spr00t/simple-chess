@@ -11,11 +11,10 @@ using namespace boost;
 using namespace boost::process;
 using namespace std;
 
-ConsoleOpponent::ConsoleOpponent(const std::string &path, int color)
-    : ChessPlayer(color),
-      color(color)
+ConsoleOpponent::ConsoleOpponent(const std::string &path, Config *config, int color)
+    : ChessPlayer(config, color)
 {
-    if (color == WHITE) {
+    if (config == WHITE) {
         process = child(path, "--slave", color == WHITE ? "white" : "black", std_out > pipe_out, std_in < pipe_in);
     } else {
         process = child(path, "--slave", color == WHITE ? "white" : "black", std_out > pipe_out, std_in < pipe_in);
@@ -23,7 +22,12 @@ ConsoleOpponent::ConsoleOpponent(const std::string &path, int color)
     }
 }
 
-bool ConsoleOpponent::getMove(ChessBoard &board, Move &move, AdvancedMoveData * move_data) const
+void ConsoleOpponent::prepare(const ChessBoard &board)
+{
+
+}
+
+bool ConsoleOpponent::getMove(const ChessBoard &board, Move &move, AdvancedMoveData * move_data)
 {
     string line;
     while (pipe_out && std::getline(pipe_out, line) && line.empty())
@@ -43,16 +47,18 @@ bool ConsoleOpponent::getMove(ChessBoard &board, Move &move, AdvancedMoveData * 
 
         processInput(line, move);
         move.figure = board.square[move.from];
+        ChessBoard board_copy = board;
+        board_copy.move(move);
+        board_copy.print(move);
+        board_copy.undoMove(move);
         return true;
     }
     return true;
 }
 
-
-bool ConsoleOpponent::showMove(ChessBoard &board, Move &move)
+void ConsoleOpponent::showMove(const ChessBoard &board, Move &move)
 {
     pipe_in << move.toString() << endl;
-    return true;
 }
 
 bool ConsoleOpponent::processInput(const string& buf, Move & move) const

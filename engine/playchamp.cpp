@@ -10,6 +10,7 @@
 #include "humanplayer.h"
 #include "aiplayer.h"
 #include "consoleopponent.h"
+#include "config.h"
 
 using namespace std;
 #include <thread>
@@ -37,9 +38,11 @@ int PlayChamp::Run(int argc, char *argv[])
     Move move;
     bool found;
 
+    Config config = Config::from_start_color(WHITE);
+
     // Initialize players
-    ConsoleOpponent white(competitors[0], WHITE);
-    ConsoleOpponent black(competitors[1], BLACK);
+    ConsoleOpponent white(competitors[0], &config, WHITE);
+    ConsoleOpponent black(competitors[1], &config, BLACK);
 
     // setup board
     board.initDefaultSetup();
@@ -69,7 +72,7 @@ int PlayChamp::Run(int argc, char *argv[])
         // if player has a move get all moves
         regulars.clear();
         nulls.clear();
-        MoveGenerator<false>::getMoves(board, board.next_move_color, regulars, regulars, nulls);
+        MoveGenerator<false>::getMoves(board, board.next_move_color, regulars, regulars);
 
         // execute maintenance moves
         for(list<Move>::iterator it = nulls.begin(); it != nulls.end(); ++it)

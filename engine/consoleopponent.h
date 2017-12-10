@@ -16,16 +16,14 @@ class ConsoleOpponent : public ChessPlayer
 
         enum Status { Normal, InCheck, Stalemate, Checkmate };
 
-        ConsoleOpponent(const std::string & path, int color);
+        ConsoleOpponent(const std::string & path, Config * config, int color);
 
         virtual ~ConsoleOpponent(){};
 
-        /*
-        * Ask player what to do next
-        */
-        virtual bool getMove(ChessBoard & board, Move & move, AdvancedMoveData * move_data) const override;
+        virtual void prepare(const ChessBoard & board) override;
+        virtual bool getMove(const ChessBoard & board, Move & move, AdvancedMoveData * move_data) override;
 
-        virtual bool showMove(ChessBoard & board, Move & move) override;
+        virtual void showMove(const ChessBoard & board, Move & move) override;
 
         std::string readInput(void) const;
 
@@ -37,12 +35,6 @@ class ConsoleOpponent : public ChessPlayer
 
 
     protected:
-
-        /*
-        * Guess what...
-        */
-        int color;
-
         mutable boost::process::ipstream pipe_out;
         boost::process::opstream pipe_in;
         boost::process::child process;

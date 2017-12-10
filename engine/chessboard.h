@@ -56,9 +56,15 @@ struct Move
 
     char figure;	// figure which is moved
 	char from, to;	// board is seen one-dimensional
-	char capture;	// piece that resides at destination square
+    char capture;	// piece that resides at destination square
+
+    /**
+     * @brief passant_pos_opponent is a position of the opponent's
+     * passant pawn position durign the move
+     */
+    signed short passant_pos_opponent = -1;
 };
-static const Move EMPTY_MOVE = {0, 0, 0, 0};
+static const Move EMPTY_MOVE = {0, 0, 0, 0, -1};
 
 enum Position {
     A1 = 0, B1, C1, D1, E1, F1, G1, H1,
@@ -72,9 +78,9 @@ enum Position {
 };
 
 
-struct ChessBoard
+class ChessBoard
 {
-
+public:
 	ChessBoard();
 
     /*
@@ -118,7 +124,7 @@ struct ChessBoard
 	* a move that puts the player's own king in check, is also treated as
 	* invalid.
 	*/
-	bool isValidMove(int color, Move & move);
+    bool isValidMove(int color, Move & move) const ;
 
 	/*
 	* Returns the status of player of given color. This method is not declared
@@ -165,6 +171,8 @@ struct ChessBoard
 
     int next_move_color = WHITE;
 
+    signed short passant_pos = -1;
+
 };
 template<bool capture_only>
 class MoveGenerator {
@@ -173,13 +181,13 @@ public:
     * Generates all moves for one side.
     */
    static void getMoves(ChessBoard & board, int color, std::list<Move> & moves,
-        std::list<Move> & captures, std::list<Move> & null_moves);
+        std::list<Move> & captures);
 
     /*
     * All possible moves for a pawn piece.
     */
     static void getPawnMoves(ChessBoard & board, int figure, int pos, std::list<Move> & moves,
-        std::list<Move> & captures, std::list<Move> & null_moves);
+        std::list<Move> & captures);
 
     /*
     * All possible moves for a rook piece.

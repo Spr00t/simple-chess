@@ -33,21 +33,18 @@ class AIPlayer: public ChessPlayer {
 
 	public:
 	
-		AIPlayer(int color, int search_depth);
+        AIPlayer(Config * config, int color, int search_depth);
 
 		~AIPlayer();
 
-		/*
-		* Ask player what to do next
-		*/
-        bool getMove(ChessBoard & board, Move & move, AdvancedMoveData * move_data) const override;
-
-        bool showMove(ChessBoard & board, Move & move) override {return true;}
+        void prepare(const ChessBoard & board) override;
+        bool getMove(const ChessBoard & board, Move & move, AdvancedMoveData * move_data) override;
+        void showMove(const ChessBoard & board, Move & move) override;
 
 		/*
 		* MinMax search for best possible outcome
 		*/ 
-        int evalAlphaBeta(ChessBoard & board, EvaluationInformation * info) const;
+        int evalAlphaBeta(ChessBoard & board, const EvaluationInformation * info) const;
 
 		/*
 		* For now, this checks only material

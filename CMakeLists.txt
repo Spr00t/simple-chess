@@ -70,10 +70,18 @@ endif()
 # Now simply link against gtest or gtest_main as needed. Eg
 add_executable(unit_test engine/tests.cpp ${SRC} ${HEADER})
 target_link_libraries(unit_test gtest_main ${Boost_LIBRARIES})
-add_test(NAME example_test COMMAND example)
-##########GTEST
 
 
 add_executable(${PROJECT_NAME} engine/playchess.cpp ${SRC} ${HEADER})
-
 target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
+
+
+#add_custom_command(
+#     TARGET unit_test
+#     POST_BUILD
+#     COMMAND ./unit_test
+#     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+#     COMMENT "Run tests"
+#)
+
+

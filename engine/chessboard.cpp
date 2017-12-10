@@ -2,9 +2,12 @@
 #include <cstring>
 #include <list>
 #include <boost/format.hpp>
+#include <exception>
 #include <sstream>
+
 #include "chessboard.h"
 #include "chessplayer.h"
+
 
 #define COLORED
 using namespace boost;
@@ -272,8 +275,24 @@ void ChessBoard::loadFEN(const string& position)
 
     while (position[pos] == ' ' && pos < len) { pos++; }
 
-    // ignore passant
-    while (position[pos] != ' ' && pos < len) {pos++;}
+    if (position[pos] == '-') {
+        // empty passant
+        pos++;
+    } else if (position[pos] >= 'a' && position[pos] <= 'h' && (position[pos + 1]  == '3' || position[pos + 1] == '6') ) {
+
+        int vertical = position[pos] - 'a';
+        /// in FEN notation passant kicked filed is present in the string
+        int horizontal = (position[pos + 1] == '3') ? 3 : 4;
+
+        passant_pos = horizontal * 8 + vertical;
+
+        if (FIGURE(square[passant_pos]) == PAWN) {
+            square[passant_pos] = SET_PASSANT(square[passant_pos]);
+        }
+    } else {
+        throw std::runtime_error(str(format("FEN: %1% Unexpected character at pos %2%") % position % pos ) ) ;
+    }
+
     while (position[pos] == ' ' && pos < len) { pos++; }
 
     int number = 0;
@@ -285,11 +304,11 @@ void ChessBoard::loadFEN(const string& position)
 
     //if kings are not on their places, mark them moved
     if (black_king_pos != E8) {
-        square[black_king_pos] = SET_MOVED(square[black_king_pos]);
+        square[(int)black_king_pos] = SET_MOVED(square[black_king_pos]);
     }
 
     if (white_king_pos != E1) {
-        square[white_king_pos] = SET_MOVED(square[white_king_pos]);
+        square[(int)white_king_pos] = SET_MOVED(square[white_king_pos]);
     }
 
     //ignore next move number
@@ -384,7 +403,7 @@ void ChessBoard::refreshFigures()
     }
 }
 template <bool capture_only>
-void MoveGenerator<capture_only>::getMoves(ChessBoard & board, int color, list<Move> & moves, list<Move> & captures, list<Move> & null_moves)
+void MoveGenerator<capture_only>::getMoves(ChessBoard & board, int color, list<Move> & moves, list<Move> & captures)
 {
 	int pos, figure;
 	
@@ -397,7 +416,7 @@ void MoveGenerator<capture_only>::getMoves(ChessBoard & board, int color, list<M
 				switch(FIGURE(figure))
 				{
 					case PAWN:
-                        MoveGenerator<capture_only>::getPawnMoves(board, figure, pos, moves, captures, null_moves);
+                        MoveGenerator<capture_only>::getPawnMoves(board, figure, pos, moves, captures);
 						break;
 					case ROOK:
                         MoveGenerator<capture_only>::getRookMoves(board, figure, pos, moves, captures);
@@ -422,23 +441,10 @@ void MoveGenerator<capture_only>::getMoves(ChessBoard & board, int color, list<M
 	}
 }
 template<bool capture_only>
-void MoveGenerator<capture_only>::getPawnMoves(ChessBoard & board, int figure, int pos, list<Move> & moves, list<Move> & captures, list<Move>  & null_moves)
+void MoveGenerator<capture_only>::getPawnMoves(ChessBoard & board, int figure, int pos, list<Move> & moves, list<Move> & captures)
 {
 	Move new_move;
 	int target_pos, target_figure;
-
-	// If pawn was previously en passant candidate victim, it isn't anymore.
-	// This is a null move because it has to be executed no matter what.
-	if(IS_PASSANT(figure))
-	{
-		new_move.figure = CLEAR_PASSANT(figure);
-		new_move.from = pos;
-		new_move.to = pos;
-		new_move.capture = figure;
-		null_moves.push_back(new_move);
-		
-		figure = CLEAR_PASSANT(figure);
-	}
 
 	// Of course, we only have to set this once
 	new_move.figure = figure;
@@ -1516,12 +1522,14 @@ bool ChessBoard::isVulnerable(int pos, int color) const
 	return false;
 }
 
-bool ChessBoard::isValidMove(int color, Move & move)
+bool ChessBoard::isValidMove(int color, Move & move) const
 {
 	bool valid = false;
-	list<Move> regulars, nulls;
+    list<Move> regulars;
 
-    MoveGenerator<false>::getMoves(*this, color, regulars, regulars, nulls);
+    ChessBoard * board_ptr = const_cast<ChessBoard *>(this);
+
+    MoveGenerator<false>::getMoves(*board_ptr, color, regulars, regulars);
 
 	for(list<Move>::iterator it = regulars.begin(); it != regulars.end() && !valid; ++it)
 	{
@@ -1529,10 +1537,10 @@ bool ChessBoard::isValidMove(int color, Move & move)
 		{
 			move = *it;
 
-			this->move(move);
+            board_ptr->move(move);
 			if(!isVulnerable(color ? black_king_pos : white_king_pos, color))
 				valid = true;
-			undoMove(*it);
+            board_ptr->undoMove(*it);
 		}
 	}
 
@@ -1545,9 +1553,9 @@ ChessPlayer::Status ChessBoard::getPlayerStatus(int color)
         return ChessPlayer::Draw;
     }
 	bool king_vulnerable = false, can_move = false;
-	list<Move> regulars, nulls;
+    list<Move> regulars;
 
-    MoveGenerator<false>::getMoves(*this, color, regulars, regulars, nulls);
+    MoveGenerator<false>::getMoves(*this, color, regulars, regulars);
 
 	if(isVulnerable(color ? black_king_pos : white_king_pos, color))
 		king_vulnerable = true;
@@ -1574,6 +1582,12 @@ ChessPlayer::Status ChessBoard::getPlayerStatus(int color)
 
 void ChessBoard::move(const Move & move)
 {
+    if (passant_pos != -1) {
+        //remove old passant flag from opponents PAWN
+        square[passant_pos] = CLEAR_PASSANT(square[passant_pos]);
+        passant_pos = -1;
+    }
+
     if (move.capture || (FIGURE(move.figure) == PAWN)) {
         if (move.to != move.from) {
             fifty_moves_stack.push_back(fifty_moves);
@@ -1676,7 +1690,12 @@ void ChessBoard::movePawn(const Move & move)
 			this->square[(int)move.to] = SET_MOVED(QUEEN);
 		else
 			this->square[(int)move.to] = SET_MOVED(move.figure);
-	}
+    }
+
+    if (abs(move.to - move.from) == 16) {
+        passant_pos = move.to;
+        square[move.to] = SET_PASSANT(square[move.to]);
+    }
 }
 
 void ChessBoard::undoMovePawn(const Move & move)
@@ -1806,7 +1825,7 @@ void HelperFunction() {
     int color;
     list<Move> moves;
 
-    MoveGenerator<false>::getMoves(board, color, moves, moves, moves);
-    MoveGenerator<true>::getMoves(board, color, moves, moves, moves);
+    MoveGenerator<false>::getMoves(board, color, moves, moves);
+    MoveGenerator<true>::getMoves(board, color, moves, moves);
 
 }

@@ -1,14 +1,30 @@
 #include "global.h"
+#pragma once
 enum class Mode {
-    NORMAL,
-    MASTER,
-    SLAVE,
+    Human,
+    Master,
+    Slave,
 };
 
 struct Config
 {
     static Config from_args(int argc, char *argv[]);
+    static Config from_start_color(int color);
 
-    Mode mode = Mode::NORMAL;
-    int color = WHITE;
+    bool modeHuman() {
+        return mode == Mode::Human;
+    }
+
+    bool modeMaster() {
+        return mode == Mode::Master;
+    }
+
+    bool modeSlave() {
+        return mode == Mode::Slave;
+    }
+
+    bool isAiBlack() { return ai_color == BLACK; }
+
+    Mode mode = Mode::Human;
+    int ai_color = BLACK;
 };

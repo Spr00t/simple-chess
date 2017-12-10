@@ -13,8 +13,8 @@ static const int QUISCENT_DEPTH = 4;
 #else
 static const int QUISCENT_DEPTH = 6;
 #endif
-AIPlayer::AIPlayer(int color, int search_depth)
- : ChessPlayer(color),
+AIPlayer::AIPlayer(Config *config, int color, int search_depth)
+ : ChessPlayer(config, color),
    ai_depth(search_depth)
 {
 	srand(time(NULL));
@@ -23,10 +23,15 @@ AIPlayer::AIPlayer(int color, int search_depth)
 AIPlayer::~AIPlayer()
 {}
 
-bool AIPlayer::getMove(ChessBoard & board, Move & move, AdvancedMoveData *move_data) const
+void AIPlayer::prepare(const ChessBoard &board)
 {
+}
+
+bool AIPlayer::getMove(const ChessBoard & orig_board, Move & move, AdvancedMoveData *move_data)
+{
+    ChessBoard & board = const_cast<ChessBoard &>(orig_board);
 	vector<Move> candidates;
-    list<Move> regulars, simple, captures, nulls;
+    list<Move> regulars, simple, captures;
     EvaluationInformation eval;
 
 
@@ -53,14 +58,10 @@ bool AIPlayer::getMove(ChessBoard & board, Move & move, AdvancedMoveData *move_d
     best_value = -KING_VALUE;
 
 	// get all moves
-    MoveGenerator<false>::getMoves(board, board.next_move_color, simple, captures, nulls);
+    MoveGenerator<false>::getMoves(board, board.next_move_color, simple, captures);
     regulars.swap(captures);
     //instead of copying
     copy(simple.begin(), simple.end(), back_inserter(regulars));
-
-	// execute maintenance moves
-	for(list<Move>::iterator it = nulls.begin(); it != nulls.end(); ++it)
-		board.move(*it);
 
 	// loop over all moves
 	for(list<Move>::iterator it = regulars.begin(); it != regulars.end(); ++it)
@@ -69,7 +70,7 @@ bool AIPlayer::getMove(ChessBoard & board, Move & move, AdvancedMoveData *move_d
         board.move(*it);
 
 #ifdef TRACE
-        moved.push_back(*it);
+        eval.moved->push_back(*it);
 #endif
 
         bool current_king_vulnerable   = board.isVulnerable((board.next_move_color ? board.black_king_pos : board.white_king_pos), board.next_move_color);
@@ -95,7 +96,7 @@ bool AIPlayer::getMove(ChessBoard & board, Move & move, AdvancedMoveData *move_d
             stringstream sstr;
             Global::instance().log("=============================================");
             sstr << "Figures count: " << board.get_all_figures_count() << endl;
-            sstr << "Depth: "         << target_depth << endl;
+            sstr << "Depth: "         << eval.depth << endl;
 
             sstr << "Fifty moves left: " << board.fifty_moves << endl;
             sstr << "Available move (" << tmp << ")" << it->toString()
@@ -127,13 +128,9 @@ bool AIPlayer::getMove(ChessBoard & board, Move & move, AdvancedMoveData *move_d
 		// undo move and inc iterator
 		board.undoMove(*it);
 #ifdef TRACE
-        moved.pop_back();
+        eval.moved->pop_back();
 #endif
 	}
-
-	// undo maintenance moves
-	for(list<Move>::iterator it = nulls.begin(); it != nulls.end(); ++it)
-		board.undoMove(*it);
 
     move_data->board_evaluation = best_value;
 	// loosing the game?
@@ -148,7 +145,7 @@ bool AIPlayer::getMove(ChessBoard & board, Move & move, AdvancedMoveData *move_d
         stringstream tmp;
         Global::instance().log("=============================================");
         tmp << "Figures count: " << board.get_all_figures_count() << endl;
-        tmp << "Depth: "         << target_depth << endl;
+        tmp << "Depth: "         << ai_depth << endl;
 
         tmp << "Fifty moves left: " << board.fifty_moves << endl;
         tmp << "Selected move (" << best_value << ")" << move.toString()
@@ -160,17 +157,22 @@ bool AIPlayer::getMove(ChessBoard & board, Move & move, AdvancedMoveData *move_d
         Global::instance().log("=============================================");
 #endif
 		return true;
-	}
+    }
 }
 
-int AIPlayer::evalAlphaBeta(ChessBoard & board, EvaluationInformation * info) const
+void AIPlayer::showMove(const ChessBoard &board, Move &move)
+{
+
+}
+
+int AIPlayer::evalAlphaBeta(ChessBoard & board, const EvaluationInformation * info) const
 {
 #ifdef TRACE
     list<Move> chain;
     Move best_move = EMPTY_MOVE;
 #endif
-    list<Move> regulars, simple, ignored, captures, nulls;
-    int best_value, tmp;
+    list<Move> regulars, simple, ignored, captures;
+    int best_value, tmp, alpha = info->alpha;
 
     bool long_depth = false, checkmate;
     if(info->depth <= 0 && !info->quiescent) {
@@ -188,19 +190,13 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, EvaluationInformation * info) co
 
     if (long_depth && !info->quiescent) {
         // get only captures
-        MoveGenerator<true>::getMoves(board, board.next_move_color, ignored, regulars, nulls);
+        MoveGenerator<true>::getMoves(board, board.next_move_color, ignored, regulars);
     } else {
-        MoveGenerator<false>::getMoves(board, board.next_move_color, simple, captures, nulls);
+        MoveGenerator<false>::getMoves(board, board.next_move_color, simple, captures);
         //instead of copying
         regulars.swap(captures);
         copy(simple.begin(), simple.end(), back_inserter(regulars));
     }
-
-	
-	// execute maintenance moves
-	for(list<Move>::iterator it = nulls.begin(); it != nulls.end(); ++it)
-		board.move(*it);
-
 
     // assume we have a state_mate
     bool stalemate = true;
@@ -220,7 +216,7 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, EvaluationInformation * info) co
 		// execute move
         board.move(*it);
 #ifdef TRACE
-        moved->push_back(*it);
+        info->moved->push_back(*it);
 
         chain.clear();
         {
@@ -228,14 +224,11 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, EvaluationInformation * info) co
             stringstream trace;
             break_counter++;
             trace << break_counter << ": Try submove:";
-            for (Move & move : *moved) {
+            for (Move & move : *info->moved) {
                 trace << move.toString() + "->";
             }
             Global::instance().log(trace.str());
-            if (break_counter == 25) {
-                board.print(moved->back());
-                Global::instance().log("");
-            }
+
         }
 #endif
         int current_king_pos = board.next_move_color ? board.black_king_pos : board.white_king_pos;
@@ -271,25 +264,26 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, EvaluationInformation * info) co
             else
                 quiescent = false;
 
+            EvaluationInformation nested_information;
+            nested_information.depth     = info->depth - 1;
+            nested_information.alpha     = - info->beta;
+            nested_information.beta      = - info->alpha;
+            nested_information.quiescent =  quiescent;
+#ifdef TRACE
+            nested_information.moved = info->moved;
+            nested_information.best = &chain;
+#endif
+            
             if (board.fifty_moves <= 0) {
                 tmp = 0;
             } else {
-                EvaluationInformation nested_information;
-                nested_information.depth     = info->depth - 1;
-                nested_information.alpha     = - info->beta;
-                nested_information.beta      = - info->alpha;
-                nested_information.quiescent =  quiescent;
-#ifdef TRACE
-                nested_information.moved = &moved;
-                nested_information.best = &chain;
-#endif
                 // recursion 'n' pruning
                 tmp = -evalAlphaBeta(board, &nested_information);
             }
 #ifdef TRACE
             {
                 stringstream trace;
-                for (Move & move : *moved) {
+                for (Move & move : *info->moved) {
                     trace << move.toString() + "->";
                 }
                 trace << tmp;
@@ -299,12 +293,11 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, EvaluationInformation * info) co
             if(tmp > best_value) {
                 best_value = tmp;
 #ifdef TRACE
-
-                *best_chain = chain;
                 best_move = *it;
+                *info->best = *nested_information.best;
 #endif
-                if(tmp > info->alpha) {
-                    info->alpha = tmp;
+                if(tmp > alpha) {
+                    alpha = tmp;
 				}
 			}
 		}
@@ -312,17 +305,14 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, EvaluationInformation * info) co
 		// undo move and inc iterator
 		board.undoMove(*it);
 #ifdef TRACE
-        moved->pop_back();
+        info->moved->pop_back();
 #endif
-	}
-	
-	// undo maintenance moves
-	for(list<Move>::iterator it = nulls.begin(); it != nulls.end(); ++it)
-		board.undoMove(*it);
-#ifdef TRACE
-    if (best_move.figure) {
-        best_chain->push_front(best_move);
     }
+
+#ifdef TRACE
+    if (best_move.figure)
+        info->best->push_front(best_move);
+    
 #endif
     if (checkmate) {
         // it is not stalemate :), this is checkmate
@@ -335,15 +325,18 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, EvaluationInformation * info) co
 int AIPlayer::evaluateBoard(const ChessBoard & board) const
 {//A7G7->G8F8->F6E6->F8G7->E6D7
     int figure, pos, sum = 0, summand, row, col, edge_distance_row, edge_distance_col;
+#   ifdef TRACE
     static int br_counter = 0;
     br_counter ++;
     stringstream sstr;
     //sstr << "BREAK EV: " << br_counter;
-    if (false && br_counter == 9) {
+    if (false)
+    if (br_counter == 9) {
         board.print();
         Global::instance().log("");
     }
     Global::instance().log(sstr.str());
+#   endif
     int black_sum = 0, white_sum = 0;
 	for(pos = 0; pos < 64; pos++)
 	{

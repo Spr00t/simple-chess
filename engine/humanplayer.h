@@ -12,16 +12,13 @@ class HumanPlayer: public ChessPlayer {
 
 	public:
 	
-        HumanPlayer(int color, bool slaveMode);
+        HumanPlayer(Config * config, int color);
 		
 		~HumanPlayer();
 		
-		/*
-		* Ask player what to do
-		*/
-        virtual bool getMove(ChessBoard & board, Move & move, AdvancedMoveData * move_data) const override;
-
-        virtual bool showMove(ChessBoard & board, Move & move) override {return true;}
+        virtual void prepare(const ChessBoard & board) override;
+        virtual bool getMove(const ChessBoard & board, Move & move, AdvancedMoveData * move_data) override;
+        virtual void showMove(const ChessBoard & board, Move & move) override;
 
 		
 		/*
@@ -33,8 +30,7 @@ class HumanPlayer: public ChessPlayer {
 		* Process input. Frees buffer allocated by readInput()
 		*/
         bool processInput(const std::string &buf, Move & move) const;
-private:
-        bool slaveMode;
+
 };
 
 #endif

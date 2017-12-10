@@ -3,17 +3,19 @@
 #include <cstdio>
 #include <list>
 #include <string>
-#include "chessboard.h"
-#include "humanplayer.h"
-#include "aiplayer.h"
-#include "tests.h"
 #include <boost/process.hpp>
 #include <memory>
-#include "playchamp.h"
 #include <thread>
 #include <iostream>
 #include <string.h>
 #include "global.h"
+#include "playchamp.h"
+#include "chessboard.h"
+#include "humanplayer.h"
+#include "aiplayer.h"
+#include "consoleopponent.h"
+#include "tests.h"
+#include "config.h"
 using namespace std;
 #define NOT !
 
@@ -28,19 +30,20 @@ void test_fen() {
 //    board.loadFEN("6k1/R7/5K2/8/8/8/8/8 w - -");
 //    board.loadFEN("8/8/5K1k/8/8/8/6R1/8 w - -");
 //    board.loadFEN("8/7k/8/4K3/8/4B3/6B1/8 w - -");
-    board.loadFEN("8/8/3K4/8/3k4/5r2/8/8 b - -");
+    board.loadFEN("5k2/5p2/8/8/8/8/1PPPPPP1/4K3 w - -");
 
 
     AdvancedMoveData advanced;
 
-    list<Move> nulls;
     Move mov;
     bool found;
     unique_ptr<ChessPlayer> black;
     unique_ptr<ChessPlayer> white;
 
-    black = make_unique<AIPlayer>(BLACK, 3);
-    white = make_unique<AIPlayer>(WHITE, 3);
+    Config config;
+
+    black = make_unique<AIPlayer>(&config, BLACK, 2);
+    white = make_unique<AIPlayer>(&config, WHITE, 2);
     Global::instance().setColor(BLACK);
 
     board.print();
@@ -55,10 +58,6 @@ void test_fen() {
 
         if(!found)
             break;
-
-        // execute maintenance moves
-        for(list<Move>::iterator it = nulls.begin(); it != nulls.end(); ++it)
-            board.move(*it);
 
         // execute move
         board.move(mov);
@@ -81,85 +80,79 @@ void test_fen() {
 }
 
 int main(int argc, char *argv[]) {
+    //sleep(10);
+    ChessBoard board;
+
+    string competitors[2];
+    list<Move> regulars;
+    Move mov;
+    bool found;
+    unique_ptr<ChessPlayer> black;
+    unique_ptr<ChessPlayer> white;
+    AdvancedMoveData advanced;
+    bool ai_black = true;
 
     if (0) {
         test_fen();
         return 0;
     }
 
-    const string ARG = "--master";
-    const string SLAVE = "--slave";
-    bool master_mode = false;
-    bool slave_mode = false;
-    int my_color = BLACK;
-    if (argc > 2 && ARG == argv[1] ) {
-        master_mode = true;
-        string competitors[2];
+    Config config = Config::from_args(argc, argv);
+
+    if (config.modeMaster()) {
         if (argc >= 4) {
             competitors[0] = argv[2];
             competitors[1] = argv[3];
-            return PlayChamp::Run(argc, argv);
-
         }
     }
-    for (int i = 1; i < argc; i++) {
-        my_color = (string("black") == argv[i] ? BLACK : WHITE);
-    }
-    if (argc >= 3 && SLAVE == argv[1] ) {
-        slave_mode = true;
-    }
-
-	ChessBoard board;
-	list<Move> regulars, nulls;
-    Move mov;
-	bool found;
-    unique_ptr<ChessPlayer> black;
-    unique_ptr<ChessPlayer> white;
-    AdvancedMoveData advanced;
-
 	// Initialize players
 
-    if (my_color == BLACK) {
-        black = make_unique<AIPlayer>(BLACK, 4);
-        white = make_unique<HumanPlayer>(WHITE, slave_mode);
+
+    if (config.modeMaster()) {
+        black = make_unique<ConsoleOpponent>(competitors[0], &config, BLACK);
+        white = make_unique<ConsoleOpponent>(competitors[1], &config, WHITE);
     } else {
-        black = make_unique<HumanPlayer>(BLACK, slave_mode);
-        white = make_unique<AIPlayer>(WHITE, 4);
+        if (config.isAiBlack()) {
+            ai_black = true;
+            black = make_unique<AIPlayer>(&config, BLACK, 2);
+            white = make_unique<HumanPlayer>(&config, WHITE);
+        } else {
+            black = make_unique<HumanPlayer>(&config, BLACK);
+            white = make_unique<AIPlayer>(&config, WHITE, 2);
+        }
     }
 
 
 	// setup board
 	board.initDefaultSetup();
 
-    Global::instance().setColor(my_color);
+    //board.loadFEN("5k2/8/8/8/8/8/P7/4K3 b - -");
+
+    Global::instance().setColor(config.ai_color);
+
+    black->prepare(board);
+    white->prepare(board);
 
 	for(;;) {
-        if (NOT slave_mode) {
-            // show board
-            board.print(mov);
-        }
 
-
-		// query player's choice
         if(board.next_move_color == WHITE)
             found = white->getMove(board, mov, &advanced);
 		else
             found = black->getMove(board, mov, &advanced);
 
-
 		if(!found)
 			break;
 
+        if (NOT board.isValidMove(board.next_move_color, mov)) {
+            cout << "Invalid move " << mov.toString() << endl;
+            return 0;
+        }
+
 		// if player has a move get all moves
 		regulars.clear();
-		nulls.clear();
-        MoveGenerator<false>::getMoves(board, board.next_move_color, regulars, regulars, nulls);
+        MoveGenerator<false>::getMoves(board, board.next_move_color, regulars, regulars);
 
-		// execute maintenance moves
-		for(list<Move>::iterator it = nulls.begin(); it != nulls.end(); ++it)
-			board.move(*it);
-
-        if (board.next_move_color == my_color) {
+        if (board.next_move_color == config.ai_color && config.modeSlave()) {
             // do not show our move
             // it would be missunderstood by
             cout << mov.toString() << endl;
@@ -168,29 +161,49 @@ int main(int argc, char *argv[]) {
 		// execute move
         board.move(mov);
 
+        // show opponents move to other player
+        if(board.next_move_color == WHITE)
+            white->showMove(board, mov);
+        else
+            black->showMove(board, mov);
+
         stringstream str;
-        str << (board.next_move_color == my_color ? "my" : "opp") << " "
+        str << (board.next_move_color == config.ai_color ? "my" : "opp") << " "
             << (board.next_move_color == WHITE ? "white" : "black");
         Global::instance().log(mov.toString() );
 
-        if (NOT slave_mode) {
-            mov.print();
-            cout << "Move evaluation: " << advanced.board_evaluation << endl;
+        if (config.modeHuman()) {
+            if (board.next_move_color == WHITE && ai_black) {
+                cout << "Move evaluation: " << advanced.board_evaluation << endl;
+            } else if (board.next_move_color == BLACK && NOT ai_black) {
+                cout << "Move evaluation: " << advanced.board_evaluation << endl;
+            }
+        }
+
+        if (NOT config.modeSlave()) {
+            ChessPlayer::Status status = board.getPlayerStatus(board.next_move_color);
+
+            switch(status)
+            {
+                case ChessPlayer::Checkmate:
+                    board.print(mov);
+                    cout << "Checkmate: " << (board.next_move_color == WHITE ? "white" : "black") << " are defeated" << endl;
+                    return 0;
+                case ChessPlayer::Stalemate:
+                    board.print(mov);
+                    cout << "Stalemate: on " << (board.next_move_color == WHITE ? "white" : "black") << " turn" << endl;
+                    return 0;
+                case ChessPlayer::Draw:
+                    board.print(mov);
+                    cout << "50 moves end game: on " << (board.next_move_color == WHITE ? "white" : "black") << " turn" << endl;
+                    return 0;
+
+                default:
+                    continue;
+            }
         }
 
 	}
 
-    ChessPlayer::Status status = board.getPlayerStatus(board.next_move_color);
 
-	switch(status)
-	{
-		case ChessPlayer::Checkmate:
-			printf("Checkmate\n");
-			break;
-		case ChessPlayer::Stalemate:
-			printf("Stalemate\n");
-			break;
-        default:
-            break;
-	}
 }
