@@ -45,8 +45,8 @@ bool ConsoleOpponent::getMove(const ChessBoard &board, Move &move, AdvancedMoveD
             Global::instance().log("Gotcha");
         }
 
-        processInput(line, move);
-        move.figure = board.square[move.from];
+        processInput(board, line, move);
+
         ChessBoard board_copy = board;
         board_copy.move(move);
         board_copy.print(move);
@@ -61,9 +61,9 @@ void ConsoleOpponent::showMove(const ChessBoard &board, Move &move)
     pipe_in << move.toString() << endl;
 }
 
-bool ConsoleOpponent::processInput(const string& buf, Move & move) const
+bool ConsoleOpponent::processInput(const ChessBoard &board, const string& buf, Move & move) const
 {
-    optional<Move> opt = Move::fromString(buf);
+    optional<Move> opt = Move::fromString(board, buf);
     if (opt) {
          move = *opt;
          return true;

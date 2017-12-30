@@ -22,7 +22,9 @@
 // Attributes reside in upper 4 bits
 #define SET_BLACK(x) (x | 0x10)
 #define IS_BLACK(x)  (0x10 & x)
+#define IS_WHITE(x)  (!IS_BLACK(x))
 #define OPPOSITE(x)  (0x10 ^ x)
+
 
 #define SET_MOVED(x)  (x | 0x20)
 #define SET_UNMOVED(x) (x & ~0x20)
@@ -38,7 +40,7 @@
 #define IS_PROMOTED(x)    (0x80 & x)
 #define CLEAR_PROMOTED(x) (x & 0x7f)
 
-
+class ChessBoard;
 struct Move
 {
 	/*
@@ -47,7 +49,7 @@ struct Move
     void print(void) const;
 
     std::string toString(void) const;
-    static boost::optional<Move> fromString(const std::string & str);
+    static boost::optional<Move> fromString(const ChessBoard & board, const std::string & str);
 	
 	/*
 	* True if moves are equal.
@@ -63,6 +65,8 @@ struct Move
      * passant pawn position durign the move
      */
     signed short passant_pos_opponent = -1;
+
+    int non_pawn_kick_moves_count_opponent = 0;
 };
 static const Move EMPTY_MOVE = {0, 0, 0, 0, -1};
 
@@ -92,6 +96,13 @@ public:
     * Load standartised FEN annotation
     */
     void loadFEN(const std::string &position);
+
+    /*
+    * Load standartised FEN annotation
+    */
+    std::string toFEN() const;
+
+
 	/*
 	* Returns an ASCII char representing the figure.
 	*/
@@ -106,6 +117,7 @@ public:
     * Updates internal figures count
     */
     void refreshFigures();
+
 
     void toogleColor() {
         next_move_color = TOGGLE_COLOR(next_move_color);
@@ -124,7 +136,7 @@ public:
 	* a move that puts the player's own king in check, is also treated as
 	* invalid.
 	*/
-    bool isValidMove(int color, Move & move) const ;
+    bool isValidMove(int color, const Move &move) const ;
 
 	/*
 	* Returns the status of player of given color. This method is not declared
@@ -152,7 +164,7 @@ public:
         return figures_count[0];
     }
     int get_figures_count(int color) const {
-        return figures_count[IS_BLACK(color) >> 8];
+        return figures_count[color >> 4];
     }
     int get_all_figures_count() const {
         return figures_count[0] + figures_count[1];
@@ -165,11 +177,12 @@ public:
 	char black_king_pos;
 	char white_king_pos;
 
-    int fifty_moves = 50;
-    std::vector<int> fifty_moves_stack;
+    int non_pawn_kick_moves_count = 0;
     int figures_count[2] = {0, 0};
 
     int next_move_color = WHITE;
+
+    int move_number = 1;
 
     signed short passant_pos = -1;
 

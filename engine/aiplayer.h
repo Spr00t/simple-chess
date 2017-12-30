@@ -38,7 +38,7 @@ class AIPlayer: public ChessPlayer {
 		~AIPlayer();
 
         void prepare(const ChessBoard & board) override;
-        bool getMove(const ChessBoard & board, Move & move, AdvancedMoveData * move_data) override;
+        bool getMove(const ChessBoard & board, Move & move, AdvancedMoveData * move_data = nullptr) override;
         void showMove(const ChessBoard & board, Move & move) override;
 
 		/*

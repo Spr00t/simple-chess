@@ -9,8 +9,15 @@ public:
     bool TestCheckMateIn3HalfMoves();
     void TestFenNegative();
     void CheckPassant();
+    void CheckBlackPassant();
+    void TestFenOut();
     void TestFen();
     void TestAdvanced();
+    void FiguresCount();
+    void WrongAppearingFigures();
+
+    void TestMoveFromStringPositive();
+    void TestMoveFromStringNegative();
 
     ChessBoard board;
 };

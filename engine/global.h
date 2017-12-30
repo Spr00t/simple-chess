@@ -8,13 +8,15 @@
 #define BLACK 0x10
 #define TOGGLE_COLOR(x) (0x10 ^ x)
 #define NOT !
+
 //#define TRACE
+#define SHOW_DETAILS
 
 class Global
 {
 public:
     Global();
-    void setColor(int color);
+    void set_logging_color(int color);
     void log(const std::string & str);
     static Global& instance();
     int color = -1;
@@ -23,3 +25,9 @@ public:
 public:
 
 };
+
+
+
+
+
+

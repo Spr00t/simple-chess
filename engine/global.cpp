@@ -13,7 +13,7 @@ Global::Global()
 
 }
 
-void Global::setColor(int color)
+void Global::set_logging_color(int color)
 {
     file.open(color == WHITE ? "white.log" : "black.log", fstream::out);
 }

@@ -44,7 +44,7 @@ void test_fen() {
 
     black = make_unique<AIPlayer>(&config, BLACK, 2);
     white = make_unique<AIPlayer>(&config, WHITE, 2);
-    Global::instance().setColor(BLACK);
+    Global::instance().set_logging_color(BLACK);
 
     board.print();
 
@@ -114,21 +114,21 @@ int main(int argc, char *argv[]) {
     } else {
         if (config.isAiBlack()) {
             ai_black = true;
-            black = make_unique<AIPlayer>(&config, BLACK, 2);
+            black = make_unique<AIPlayer>(&config, BLACK, 4);
             white = make_unique<HumanPlayer>(&config, WHITE);
         } else {
             black = make_unique<HumanPlayer>(&config, BLACK);
-            white = make_unique<AIPlayer>(&config, WHITE, 2);
+            white = make_unique<AIPlayer>(&config, WHITE, 4);
         }
     }
 
 
 	// setup board
-	board.initDefaultSetup();
+    board.initDefaultSetup();
+    //board.loadFEN("k7/4p1p1/8/4Pp2/8/8/5PP1/K7 b - - 0 1");
+    board.loadFEN("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
 
-    //board.loadFEN("5k2/8/8/8/8/8/P7/4K3 b - -");
-
-    Global::instance().setColor(config.ai_color);
+    Global::instance().set_logging_color(board.next_move_color);
 
     black->prepare(board);
     white->prepare(board);
@@ -147,10 +147,6 @@ int main(int argc, char *argv[]) {
             cout << "Invalid move " << mov.toString() << endl;
             return 0;
         }
-
-		// if player has a move get all moves
-		regulars.clear();
-        MoveGenerator<false>::getMoves(board, board.next_move_color, regulars, regulars);
 
         if (board.next_move_color == config.ai_color && config.modeSlave()) {
             // do not show our move
@@ -172,13 +168,18 @@ int main(int argc, char *argv[]) {
             << (board.next_move_color == WHITE ? "white" : "black");
         Global::instance().log(mov.toString() );
 
+#ifdef SHOW_DETAILS
         if (config.modeHuman()) {
             if (board.next_move_color == WHITE && ai_black) {
                 cout << "Move evaluation: " << advanced.board_evaluation << endl;
             } else if (board.next_move_color == BLACK && NOT ai_black) {
                 cout << "Move evaluation: " << advanced.board_evaluation << endl;
             }
+            cout << board.toFEN() << endl;
+            cout << "WHITE count: " << board.figures_count[WHITE] << endl;
+            cout << "BLACK count: " << board.figures_count[BLACK >> 4] << endl;
         }
+#endif
 
         if (NOT config.modeSlave()) {
             ChessPlayer::Status status = board.getPlayerStatus(board.next_move_color);
@@ -202,8 +203,5 @@ int main(int argc, char *argv[]) {
                     continue;
             }
         }
-
 	}
-
-
 }

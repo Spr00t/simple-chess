@@ -19,7 +19,6 @@ Config Config::from_args(int argc, char *argv[]) {
         if (argc >= 3 && SLAVE == argv[1] ) {
             conf.mode = Mode::Slave;
         }
-
     }
 
 

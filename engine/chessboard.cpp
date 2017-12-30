@@ -4,6 +4,10 @@
 #include <boost/format.hpp>
 #include <exception>
 #include <sstream>
+#include <ctype.h>
+#include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string.hpp>
+#include <iostream>
 
 #include "chessboard.h"
 #include "chessplayer.h"
@@ -12,6 +16,7 @@
 #define COLORED
 using namespace boost;
 using boost::format;
+using boost::lexical_cast;
 using boost::io::group;
 
 using namespace std;
@@ -29,14 +34,22 @@ static const char * field_name[] = {
     "A7", "B7", "C7", "D7", "E7", "F7", "G7", "H7",
     "A8", "B8", "C8", "D8", "E8", "F8", "G8", "H8"
 };
+
+static ChessBoard get_default_board() {
+    ChessBoard board;
+    board.initDefaultSetup();
+    return board;
+}
+static const ChessBoard default_board = get_default_board();
+
 string Move::toString(void) const
 {
     stringstream str;
-    str << format("%1%%2%") % field_name[(int)from] % field_name[(int)to];
+    str << format("%1%%2%") % field_name[static_cast<size_t>(from)] % field_name[static_cast<size_t>(to)];
     return str.str();
 }
 
-optional<Move> Move::fromString(const std::string & str)
+optional<Move> Move::fromString(const ChessBoard &board, const std::string & str)
 {
     optional<Move> result;
     result.reset(Move());
@@ -82,13 +95,17 @@ optional<Move> Move::fromString(const std::string & str)
         else
             result->to = n * 8 + l;
     }
+    if (result) {
+        result->passant_pos_opponent = board.passant_pos;
+        if (NOT board.isValidMove(board.next_move_color, *result)) {
+            result.reset();
+        }
+    }
 
     return result;
 }
 
 void Move::print(void) const {
-
-
 
 	if(IS_BLACK(figure))
 		printf("   Black ");
@@ -116,7 +133,7 @@ void Move::print(void) const {
 			break;
 	}
 	
-	printf("from %s to %s:\n", field_name[(int)from], field_name[(int)to]);
+    printf("from %s to %s:\n", field_name[static_cast<int>(from)], field_name[static_cast<int>(to)]);
 }
 
 bool Move::operator==(const Move & b) const
@@ -175,18 +192,24 @@ void ChessBoard::print(Move move) const
     printf("    A   B   C   D   E   F   G   H  \n\n");
 }
 
+
 void ChessBoard::loadFEN(const string& position)
 {
     //initial FEN board: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 
     int len = position.size();
+    string square_str, next_move_color_str, castlings_str, passant_str;
+    stringstream sposition;
+    int pos = 0, skip;
+    int local_pos = 63;
+
+    sposition.str(position);
 
     memset(square, 0, sizeof(square));
-    int pos = 0, figure, skip;
 
-    int local_pos = 63;
+    sposition >> square_str;
     while (pos < 64 && local_pos >= 0) {
-        char fig = position[pos];
+        char fig = square_str[pos];
         int col = 7 - local_pos % 8;
         int row = local_pos / 8;
         int target_destination = row * 8 + col;
@@ -214,6 +237,10 @@ void ChessBoard::loadFEN(const string& position)
             case 'p':
             case 'P':
                 square[target_destination] = (fig == 'p') ? SET_BLACK(PAWN) : PAWN;
+//                if ((IS_BLACK(square[target_destination]) && target_destination / 8 != 6)
+//                ||  (IS_WHITE(square[target_destination]) && target_destination / 8 != 1)) {
+//                    square[target_destination] = SET_MOVED(square[target_destination]);
+//                }
                 break;
             case '/':
                 pos++;
@@ -225,94 +252,164 @@ void ChessBoard::loadFEN(const string& position)
                 local_pos -= (skip - 1); // one additional increment will be applied in the end of loop
                 break;
         }
-        if (square[target_destination]) square[target_destination] = SET_UNMOVED(square[target_destination]);
+        if (square[target_destination]) {
+            // assume figure was already moved
+            square[target_destination] = SET_MOVED(square[target_destination]);
+            // mark unmoved if it has a relevant same figure in the default board
+            if (FIGURE(square[target_destination]) == FIGURE(default_board.square[target_destination])
+                    && IS_BLACK(square[target_destination]) == IS_BLACK(default_board.square[target_destination]))
+                square[target_destination] = SET_UNMOVED(square[target_destination]);
+        }
 
         pos++;
         local_pos--;
     }
     cycle_out:
 
-    while (position[pos] == ' ' && pos < len) { pos++; }
+    sposition >> next_move_color_str;
 
-    next_move_color = (position[pos] == 'w' ? WHITE : BLACK);
-    pos++;
-
-    while (position[pos] == ' ' && pos < len) { pos++; }
-
+    next_move_color = iequals(next_move_color_str, "w") ? WHITE : BLACK;
 
     if (square[A1]) square[A1] = SET_MOVED(square[A1]);
     if (square[A8]) square[A8] = SET_MOVED(square[A8]);
     if (square[H1]) square[H1] = SET_MOVED(square[H1]);
     if (square[H8]) square[H8] = SET_MOVED(square[H8]);
 
-    //castlings
-    while (position[pos] != ' ' && pos < len) {
-        char fig = position[pos];
-        switch (fig) {
-            case 'k':
-                if (square[E8]) square[E8] = SET_UNMOVED(square[E8]);
-                if (square[H8]) square[H8] = SET_UNMOVED(square[H8]);
-                break;
-            case 'K':
-                if (square[E1]) square[E1] = SET_UNMOVED(square[E1]);
-                if (square[H1]) square[H1] = SET_UNMOVED(square[H1]);
-                break;
-            case 'q':
-                if (square[E8]) square[E8] = SET_UNMOVED(square[E8]);
-                if (square[A8]) square[A8] = SET_UNMOVED(square[A8]);
-                break;
-            case 'Q':
-                if (square[E8]) square[E8] = SET_UNMOVED(square[E8]);
-                if (square[A1]) square[A1] = SET_UNMOVED(square[A1]);
-                break;
-            default:
-                goto cycle_out2;
+    sposition >> castlings_str;
+
+    if (castlings_str != "-") {
+        //castlings
+        for (char fig : castlings_str) {
+            switch (fig) {
+                case 'k':
+                    if (square[E8]) square[E8] = SET_UNMOVED(square[E8]);
+                    if (square[H8]) square[H8] = SET_UNMOVED(square[H8]);
+                    break;
+                case 'K':
+                    if (square[E1]) square[E1] = SET_UNMOVED(square[E1]);
+                    if (square[H1]) square[H1] = SET_UNMOVED(square[H1]);
+                    break;
+                case 'q':
+                    if (square[E8]) square[E8] = SET_UNMOVED(square[E8]);
+                    if (square[A8]) square[A8] = SET_UNMOVED(square[A8]);
+                    break;
+                case 'Q':
+                    if (square[E8]) square[E8] = SET_UNMOVED(square[E8]);
+                    if (square[A1]) square[A1] = SET_UNMOVED(square[A1]);
+                    break;
+                default:
+                    goto cycle_out2;
+            }
         }
-
-        pos++;
-    }
-    cycle_out2:
-
-    while (position[pos] == ' ' && pos < len) { pos++; }
-
-    if (position[pos] == '-') {
-        // empty passant
-        pos++;
-    } else if (position[pos] >= 'a' && position[pos] <= 'h' && (position[pos + 1]  == '3' || position[pos + 1] == '6') ) {
-
-        int vertical = position[pos] - 'a';
-        /// in FEN notation passant kicked filed is present in the string
-        int horizontal = (position[pos + 1] == '3') ? 3 : 4;
-
-        passant_pos = horizontal * 8 + vertical;
-
-        if (FIGURE(square[passant_pos]) == PAWN) {
-            square[passant_pos] = SET_PASSANT(square[passant_pos]);
-        }
-    } else {
-        throw std::runtime_error(str(format("FEN: %1% Unexpected character at pos %2%") % position % pos ) ) ;
+        cycle_out2: {}
     }
 
-    while (position[pos] == ' ' && pos < len) { pos++; }
 
-    int number = 0;
-    while (position[pos] >= '0' && position[pos] <= '9' && pos < len) {number += (position[pos] - '0' + 10 * number); pos++; }
+    sposition >> passant_str;
 
-    fifty_moves = 51 -  number;
+    if (passant_str != "-") {
+        pos = 0;
+        if (passant_str[pos] >= 'a' && passant_str[pos] <= 'h' && (passant_str[pos + 1]  == '3' || passant_str[pos + 1] == '6') ) {
+
+            int vertical = passant_str[pos] - 'a';
+            /// in FEN notation passant kicked filed is present in the string
+            int horizontal = (passant_str[pos + 1] == '3') ? 3 : 4;
+
+            passant_pos = horizontal * 8 + vertical;
+
+            if (FIGURE(square[passant_pos]) == PAWN) {
+                square[passant_pos] = SET_PASSANT(square[passant_pos]);
+            }
+        } else {
+            throw std::runtime_error(str(format("FEN: %1% Unexpected character at pos %2%") % position % sposition.tellg() ) ) ;
+        }
+    }
+
+    sposition >> non_pawn_kick_moves_count;
+    sposition >> move_number;
 
     refreshFigures();
 
     //if kings are not on their places, mark them moved
     if (black_king_pos != E8) {
-        square[(int)black_king_pos] = SET_MOVED(square[black_king_pos]);
+        square[static_cast<int>(black_king_pos)] = SET_MOVED(square[black_king_pos]);
     }
 
     if (white_king_pos != E1) {
-        square[(int)white_king_pos] = SET_MOVED(square[white_king_pos]);
+        square[static_cast<int>(white_king_pos)] = SET_MOVED(square[white_king_pos]);
     }
 
-    //ignore next move number
+}
 
+std::string ChessBoard::toFEN() const
+{
+    stringstream fen;
+    string castlings;
+    int space_count = 0;
+    int pos = 0, figure;
+
+    map<int, char> whites = {{ROOK, 'R'}, {KNIGHT, 'N'}, {KING, 'K'}, {QUEEN, 'Q'}, {BISHOP, 'B'}, {PAWN, 'P'}};
+
+    for (int y = 7; y >= 0; y--) {
+        for (int x = 0; x < 8; x++) {
+            pos = y * 8 + x;
+            if (square[pos]) {
+                if (space_count > 0) {
+                    fen << space_count;
+                    space_count = 0;
+                }
+                figure = FIGURE(square[pos]);
+                char c = whites[figure];
+                if (IS_BLACK(square[pos])) {
+                    c = tolower(c);
+                }
+                fen << c;
+            } else {
+                space_count++;
+            }
+        }
+        if (space_count > 0) {
+            fen << space_count;
+            space_count = 0;
+        }
+        if (y != 0)
+            fen << "/";
+    }
+    fen << " ";
+
+    /// color
+    fen << (next_move_color == BLACK ? 'b' : 'w');
+    fen << " ";
+
+
+    /// castlings
+    if (square[H1] && square[E1] && NOT IS_MOVED(square[H1]) && NOT IS_MOVED(square[E1]))
+        castlings += "K"; //short white castling
+    if (square[A1] && square[E1] && NOT IS_MOVED(square[A1]) && NOT IS_MOVED(square[E1]))
+        castlings += "Q"; //long white castling
+    if (square[H8] && square[E8] && NOT IS_MOVED(square[H8]) && NOT IS_MOVED(square[E8]))
+        castlings += "k"; //short white castling
+    if (square[A8] && square[E8] && NOT IS_MOVED(square[A8]) && NOT IS_MOVED(square[E8]))
+        castlings += "q"; //long white castling
+    if (castlings.empty()) {
+        fen << "-";
+    } else {
+        fen << castlings;
+    }
+    fen << " ";
+
+
+    if (passant_pos == -1) {
+        fen << '-';
+    } else {
+        fen << static_cast<char>('a' + passant_pos % 8);
+        fen << (passant_pos / 8 == 3 ? 3 : 6);
+    }
+    fen << " ";
+
+    fen << non_pawn_kick_moves_count << " ";
+    fen << move_number;
+    return fen.str();
 }
 
 char ChessBoard::getASCIIrepr(int figure) const
@@ -380,18 +477,27 @@ void ChessBoard::initDefaultSetup(void)
 	// register kings
 	black_king_pos = E8;
     white_king_pos = E1;
+
+    next_move_color = WHITE;
+
+    passant_pos = -1;
+    move_number = 1;
+
+    non_pawn_kick_moves_count = 0;
+
     refreshFigures();
+
 }
 
 void ChessBoard::refreshFigures()
 {
-    figures_count[WHITE] = 0;
-    figures_count[BLACK >> 8] = 0;
+    figures_count[0] = 0;
+    figures_count[1] = 0;
     for (int pos = 0; pos < 64; pos++ ) {
 
         int figure = square[pos];
         if (figure) {
-            figures_count[IS_BLACK(figure) >> 8] ++;
+            figures_count[IS_BLACK(figure) >> 4] ++;
         }
         if (FIGURE(figure) == KING) {
             if (IS_BLACK(figure)) {
@@ -408,7 +514,7 @@ void MoveGenerator<capture_only>::getMoves(ChessBoard & board, int color, list<M
 	int pos, figure;
 	
 	for(pos = 0; pos < 64; pos++)
-	{
+    {
         if((figure = board.square[pos]) != EMPTY)
 		{
 			if(IS_BLACK(figure) == color)
@@ -439,12 +545,19 @@ void MoveGenerator<capture_only>::getMoves(ChessBoard & board, int color, list<M
 			}
 		}
 	}
+    // update necessary stuff here, lazy to do it in each subgenerations
+    for (Move & m : moves) {
+        m.passant_pos_opponent = board.passant_pos;
+    }
+    for (Move & m : captures) {
+        m.passant_pos_opponent = board.passant_pos;
+    }
 }
 template<bool capture_only>
 void MoveGenerator<capture_only>::getPawnMoves(ChessBoard & board, int figure, int pos, list<Move> & moves, list<Move> & captures)
 {
 	Move new_move;
-	int target_pos, target_figure;
+    char target_pos, target_figure;
 
 	// Of course, we only have to set this once
 	new_move.figure = figure;
@@ -539,7 +652,7 @@ void MoveGenerator<capture_only>::getPawnMoves(ChessBoard & board, int figure, i
 						new_move.to = target_pos;
 						new_move.capture = target_figure;
 						captures.push_back(new_move);
-					}				
+                    }
 				}
 			}
 		}
@@ -1522,7 +1635,7 @@ bool ChessBoard::isVulnerable(int pos, int color) const
 	return false;
 }
 
-bool ChessBoard::isValidMove(int color, Move & move) const
+bool ChessBoard::isValidMove(int color, const Move & move) const
 {
 	bool valid = false;
     list<Move> regulars;
@@ -1535,7 +1648,9 @@ bool ChessBoard::isValidMove(int color, Move & move) const
 	{
 		if(move.from == (*it).from && move.to == (*it).to)
 		{
-			move = *it;
+            // const_cast is made really for debugging
+            // this garanties that our move is same as one of generated
+            const_cast<Move&>(move) = *it;
 
             board_ptr->move(move);
 			if(!isVulnerable(color ? black_king_pos : white_king_pos, color))
@@ -1549,7 +1664,7 @@ bool ChessBoard::isValidMove(int color, Move & move) const
 
 ChessPlayer::Status ChessBoard::getPlayerStatus(int color)
 {
-    if (fifty_moves <= 0) {
+    if (non_pawn_kick_moves_count >= 50) {
         return ChessPlayer::Draw;
     }
 	bool king_vulnerable = false, can_move = false;
@@ -1574,7 +1689,7 @@ ChessPlayer::Status ChessBoard::getPlayerStatus(int color)
 		return ChessPlayer::InCheck;
 	if(king_vulnerable && !can_move)
 		return ChessPlayer::Checkmate;
-    if((!king_vulnerable && !can_move) || fifty_moves <= 0)
+    if((!king_vulnerable && !can_move) || non_pawn_kick_moves_count >= 50)
 		return ChessPlayer::Stalemate;
 
 	return ChessPlayer::Normal;
@@ -1582,6 +1697,19 @@ ChessPlayer::Status ChessBoard::getPlayerStatus(int color)
 
 void ChessBoard::move(const Move & move)
 {
+#ifdef TRACE
+    static int move_counter = 0;
+    move_counter++;
+    stringstream str;
+    str << "Move counter: " << move_counter;
+    Global::instance().log(str.str());
+#endif
+//    int count = get_all_figures_count();
+//    refreshFigures();
+//    if (count != get_all_figures_count()) {
+//        cout << "";
+//        assert(false);
+//    }
     if (passant_pos != -1) {
         //remove old passant flag from opponents PAWN
         square[passant_pos] = CLEAR_PASSANT(square[passant_pos]);
@@ -1589,12 +1717,9 @@ void ChessBoard::move(const Move & move)
     }
 
     if (move.capture || (FIGURE(move.figure) == PAWN)) {
-        if (move.to != move.from) {
-            fifty_moves_stack.push_back(fifty_moves);
-            fifty_moves = 50;
-        }
+       non_pawn_kick_moves_count=0;
     } else {
-        fifty_moves--;
+        non_pawn_kick_moves_count++;
     }
 	// kings and pawns receive special treatment
 	switch(FIGURE(move.figure))
@@ -1602,35 +1727,46 @@ void ChessBoard::move(const Move & move)
 		case KING:
 			moveKing(move);
 			break;
-		case PAWN:
-            fifty_moves = 50;
-			if(move.to != move.from) {
-				movePawn(move);
-				break;
-			}
+        case PAWN:
+            movePawn(move);
+            break;
 		default:
-			this->square[(int)move.from] = EMPTY;
-			this->square[(int)move.to] = SET_MOVED(move.figure);
+            this->square[static_cast<int>(move.from)] = EMPTY;
+            this->square[static_cast<int>(move.to)] = SET_MOVED(move.figure);
 			break;
 	}
     if (move.capture) {
-        figures_count[IS_BLACK(move.capture) >> 8]--;
+        figures_count[IS_BLACK(move.capture) >> 4]--;
     }
     if (move.to != move.from) {
         toogleColor();
     }
+
+//    count = get_all_figures_count();
+//    refreshFigures();
+//    if (count != get_all_figures_count()) {
+//        print(move);
+//        cout << "";
+//        assert(false);
+//    }
+        if (IS_PASSANT(square[D4]) && IS_BLACK(square[D4])
+         ) {
+            print(move);
+            assert(false);
+        }
+
+//    if (IS_PASSANT(square[F7]) && IS_BLACK(square[F7])
+//     || IS_PASSANT(square[F6]) && IS_BLACK(square[F6])
+//     || IS_PASSANT(square[F4]) && IS_BLACK(square[F4])
+//     || IS_PASSANT(square[F3]) && IS_BLACK(square[F3])
+//     ) {
+//        assert(false);
+//    }
 }
 
 void ChessBoard::undoMove(const Move & move)
 {
-    if (move.capture || FIGURE(move.figure) == PAWN) {
-        if (move.to != move.from) {
-            fifty_moves = fifty_moves_stack.back();
-            fifty_moves_stack.pop_back();
-        }
-    } else {
-        fifty_moves++;
-    }
+    non_pawn_kick_moves_count = move.non_pawn_kick_moves_count_opponent;
 	// kings and pawns receive special treatment
 	switch(FIGURE(move.figure))
 	{
@@ -1643,16 +1779,37 @@ void ChessBoard::undoMove(const Move & move)
 				break;
 			}
 		default:
-			this->square[(int)move.from] = move.figure;
-			this->square[(int)move.to] = move.capture;
+            this->square[static_cast<int>(move.from)] = move.figure;
+            this->square[static_cast<int>(move.to)] = move.capture;
 			break;
 	}
     if (move.capture) {
-        figures_count[IS_BLACK(move.capture) >> 8]++;
+        figures_count[IS_BLACK(move.capture) >> 4]++;
     }
     if (move.to != move.from) {
         toogleColor();
     }
+
+    if (move.passant_pos_opponent) {
+        square[move.passant_pos_opponent] = SET_PASSANT(square[move.passant_pos_opponent]);
+    }
+    this->passant_pos = move.passant_pos_opponent;
+
+//    int count = get_all_figures_count();
+//    refreshFigures();
+//    if (count != get_all_figures_count()) {
+//        cout << "";
+//        assert(false);
+//    }
+
+//    if (IS_PASSANT(square[F7]) && IS_BLACK(square[F7])
+//     || IS_PASSANT(square[F6]) && IS_BLACK(square[F6])
+//     || IS_PASSANT(square[F4]) && IS_BLACK(square[F4])
+//     || IS_PASSANT(square[F3]) && IS_BLACK(square[F3])
+//     ) {
+//        print(move);
+//        cout << endl;
+//    }
 }
 
 void ChessBoard::movePawn(const Move & move)
@@ -1676,20 +1833,20 @@ void ChessBoard::movePawn(const Move & move)
 		}
 	}
 
-	this->square[(int)move.from] = EMPTY;
+    this->square[static_cast<int>(move.from)] = EMPTY;
 
 	// mind pawn promotion
 	if(IS_BLACK(move.figure)) {
 		if(move.to / 8 == 0)
-			this->square[(int)move.to] = SET_MOVED(SET_BLACK(QUEEN));
+            this->square[static_cast<int>(move.to)] = SET_MOVED(SET_BLACK(QUEEN));
 		else
-			this->square[(int)move.to] = SET_MOVED(move.figure);
+            this->square[static_cast<int>(move.to)] = SET_MOVED(move.figure);
 	}
 	else {
 		if(move.to / 8 == 7)
-			this->square[(int)move.to] = SET_MOVED(QUEEN);
+            this->square[static_cast<int>(move.to)] = SET_MOVED(QUEEN);
 		else
-			this->square[(int)move.to] = SET_MOVED(move.figure);
+            this->square[static_cast<int>(move.to)] = SET_MOVED(move.figure);
     }
 
     if (abs(move.to - move.from) == 16) {
@@ -1702,7 +1859,7 @@ void ChessBoard::undoMovePawn(const Move & move)
 {
 	int capture_field;
 
-	this->square[(int)move.from] = CLEAR_PASSANT(move.figure);
+    this->square[static_cast<int>(move.from)] = CLEAR_PASSANT(move.figure);
 
 	// check for en-passant capture
 	if(IS_PASSANT(move.capture))
@@ -1712,10 +1869,10 @@ void ChessBoard::undoMovePawn(const Move & move)
 			capture_field = move.to + 8;
 			if(move.from / 8 == 3) {
 				this->square[capture_field] = move.capture;
-				this->square[(int)move.to] = EMPTY;
+                this->square[static_cast<int>(move.to)] = EMPTY;
 			}
 			else {
-				this->square[(int)move.to] = move.capture;
+                this->square[static_cast<int>(move.to)] = move.capture;
 			}
 		}
 		else
@@ -1723,16 +1880,16 @@ void ChessBoard::undoMovePawn(const Move & move)
 			capture_field = move.to - 8;
 			if(move.from / 8 == 4) {
 				this->square[capture_field] = move.capture;
-				this->square[(int)move.to] = EMPTY;
+                this->square[static_cast<int>(move.to)] = EMPTY;
 			}
 			else {
-				this->square[(int)move.to] = move.capture;
+                this->square[static_cast<int>(move.to)] = move.capture;
 			}
 		}
 	}
 	else
 	{
-		this->square[(int)move.to] = move.capture;
+        this->square[static_cast<int>(move.to)] = move.capture;
 	}
 }
 
@@ -1765,8 +1922,8 @@ void ChessBoard::moveKing(const Move & move)
 	}
 
 	// regular move
-	this->square[(int)move.from] = EMPTY;
-	this->square[(int)move.to] = SET_MOVED(move.figure);
+    this->square[static_cast<int>(move.from)] = EMPTY;
+    this->square[static_cast<int>(move.to)] = SET_MOVED(move.figure);
 	
 	// update king position variable
 	if(IS_BLACK(move.figure)) {
@@ -1808,8 +1965,8 @@ void ChessBoard::undoMoveKing(const Move & move)
 	}
 
 	// regular undo
-	this->square[(int)move.from] = move.figure;
-	this->square[(int)move.to] = move.capture;
+    this->square[static_cast<int>(move.from)] = move.figure;
+    this->square[static_cast<int>(move.to)] = move.capture;
 
 	// update king position variable
 	if(IS_BLACK(move.figure)) {

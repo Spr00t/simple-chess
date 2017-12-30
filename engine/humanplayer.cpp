@@ -8,9 +8,11 @@
 #include "chessboard.h"
 #include "global.h"
 #include "config.h"
+#include "perfomancemeasurement.h"
 
 using namespace std;
 using namespace boost;
+using namespace chrono;
 
 HumanPlayer::HumanPlayer(Config *config, int color)
  : ChessPlayer(config, color)
@@ -47,6 +49,12 @@ void HumanPlayer::showMove(const ChessBoard & orig_board, Move & move)
         default:
             break;
     }
+    double microseconds = measure_evaluation.time_span.count();
+    cout << "Perfomance:"
+         << "\n\tEvalutation times(total): " << measure_evaluation.times
+         << "\n\tEvalutation time (total): " << microseconds
+         << "\n\tEvalutation time per call (total): " << (microseconds / measure_evaluation.times)
+         << endl;
 }
 
 
@@ -65,7 +73,7 @@ bool HumanPlayer::getMove(const ChessBoard & board, Move & move, AdvancedMoveDat
 
         input = readInput();
 
-		if(!processInput(input, move)) {
+        if(!processInput(board, input, move)) {
             stringstream str;
             str << "Error while parsing input:" << input;
             Global::instance().log(str.str());
@@ -89,6 +97,11 @@ bool HumanPlayer::getMove(const ChessBoard & board, Move & move, AdvancedMoveDat
 		break;
 	}
 
+    ChessBoard cloned_board = board;
+    cloned_board.move(move);
+    cloned_board.print(move);
+    move.print();
+
 	return true;
 }
 
@@ -106,13 +119,13 @@ string HumanPlayer::readInput() const
     return line;
 }
 
-bool HumanPlayer::processInput(const string & buf, Move & move) const
+bool HumanPlayer::processInput(const ChessBoard & board, const string & buf, Move & move) const
 {
 
     if (buf == "quit")
 		exit(0);
 
-    optional<Move> opt = Move::fromString(buf);
+    optional<Move> opt = Move::fromString(board, buf);
     if (opt) {
          move = *opt;
          return true;

@@ -5,6 +5,8 @@
 #include <algorithm>
 #include "aiplayer.h"
 #include "chessboard.h"
+#include "perfomancemeasurement.h"
+
 
 using namespace std;
 
@@ -98,7 +100,7 @@ bool AIPlayer::getMove(const ChessBoard & orig_board, Move & move, AdvancedMoveD
             sstr << "Figures count: " << board.get_all_figures_count() << endl;
             sstr << "Depth: "         << eval.depth << endl;
 
-            sstr << "Fifty moves left: " << board.fifty_moves << endl;
+            sstr << "non_pawn_kick_moves_count: " << board.non_pawn_kick_moves_count << endl;
             sstr << "Available move (" << tmp << ")" << it->toString()
                                     << " because of next chain: ";
             for (Move & m: chain) {
@@ -130,9 +132,10 @@ bool AIPlayer::getMove(const ChessBoard & orig_board, Move & move, AdvancedMoveD
 #ifdef TRACE
         eval.moved->pop_back();
 #endif
-	}
+    }
+    if (move_data)
+        move_data->board_evaluation = best_value;
 
-    move_data->board_evaluation = best_value;
 	// loosing the game?
     if(best_value < -WIN_VALUE) {
 		return false;
@@ -147,7 +150,7 @@ bool AIPlayer::getMove(const ChessBoard & orig_board, Move & move, AdvancedMoveD
         tmp << "Figures count: " << board.get_all_figures_count() << endl;
         tmp << "Depth: "         << ai_depth << endl;
 
-        tmp << "Fifty moves left: " << board.fifty_moves << endl;
+        tmp << "non_pawn_kick_moves_count: " << board.non_pawn_kick_moves_count << endl;
         tmp << "Selected move (" << best_value << ")" << move.toString()
                                 << " because of next chain: ";
         for (Move & move: best_chain_candidates[select]) {
@@ -186,7 +189,7 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, const EvaluationInformation * in
     }
 
 	// first assume we are loosing
-    best_value = -WIN_VALUE + 50 - board.fifty_moves; // in case we are winning lets win less moves
+    best_value = -WIN_VALUE + board.non_pawn_kick_moves_count; // in case we are winning lets win less moves
 
     if (long_depth && !info->quiescent) {
         // get only captures
@@ -224,6 +227,9 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, const EvaluationInformation * in
             stringstream trace;
             break_counter++;
             trace << break_counter << ": Try submove:";
+            if (break_counter == 554) {
+                cout << endl;
+            }
             for (Move & move : *info->moved) {
                 trace << move.toString() + "->";
             }
@@ -274,7 +280,7 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, const EvaluationInformation * in
             nested_information.best = &chain;
 #endif
             
-            if (board.fifty_moves <= 0) {
+            if (board.non_pawn_kick_moves_count >= 50) {
                 tmp = 0;
             } else {
                 // recursion 'n' pruning
@@ -324,17 +330,13 @@ int AIPlayer::evalAlphaBeta(ChessBoard & board, const EvaluationInformation * in
 
 int AIPlayer::evaluateBoard(const ChessBoard & board) const
 {//A7G7->G8F8->F6E6->F8G7->E6D7
+    EVALUATION_PROF_POINT;
     int figure, pos, sum = 0, summand, row, col, edge_distance_row, edge_distance_col;
 #   ifdef TRACE
     static int br_counter = 0;
     br_counter ++;
     stringstream sstr;
-    //sstr << "BREAK EV: " << br_counter;
-    if (false)
-    if (br_counter == 9) {
-        board.print();
-        Global::instance().log("");
-    }
+    sstr << "Evalutaion Point: " << br_counter;
     Global::instance().log(sstr.str());
 #   endif
     int black_sum = 0, white_sum = 0;

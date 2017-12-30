@@ -29,7 +29,7 @@ class HumanPlayer: public ChessPlayer {
 		/*
 		* Process input. Frees buffer allocated by readInput()
 		*/
-        bool processInput(const std::string &buf, Move & move) const;
+        bool processInput(const ChessBoard & board, const std::string &buf, Move & move) const;
 
 };
 
