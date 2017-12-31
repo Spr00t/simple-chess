@@ -3,12 +3,29 @@ sudo: false
 language:
   - cpp
 
-addons:
-  apt:
-    sources:
-      - ubuntu-toolchain-r-test
+matrix:
+ include:
+  - os: linux
+    compiler: gcc
+    env: 
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+        packages:
+          - gcc-5
+  - os: linux
+    compiler: clang
+    env: 
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+        packages:
+          - clang
 
 before_install:
+  - g++ version
   - pushd .
   - pip install --user cpp-coveralls
   - echo $PWD
