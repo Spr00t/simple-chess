@@ -25,7 +25,6 @@ matrix:
           - clang
 
 before_install:
-  - g++ version
   - pushd .
   - pip install --user cpp-coveralls
   - echo $PWD
