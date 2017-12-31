@@ -9,7 +9,20 @@ addons:
       - ubuntu-toolchain-r-test
 
 before_install:
+  - pushd .
   - pip install --user cpp-coveralls
+  - echo $PWD
+  - PRJ=$PWD
+  - mkdir -p build/boost/
+  - cd build/boost/
+  - wget https://dl.bintray.com/boostorg/release/1.65.1/source/boost_1_65_1.tar.gz
+  - tar -xvf boost_1_65_1.tar.gz
+  - cd boost_1_65_1
+  - ./bootstrap.sh --prefix=$PRJ/build/boost/
+  - ./b2 cxxflags='-std=c++14'
+  - ./b2 install
+  - popd
+
 
 script:
   - mkdir build

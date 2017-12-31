@@ -6,6 +6,7 @@ project(simple-chess)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 set (CMAKE_BUILD_TYPE Debug)
+#set (CMAKE_BUILD_TYPE Release)
 # Boost
 set(Boost_USE_STATIC_LIBS        ON) # only find static libs
 set(Boost_USE_MULTITHREADED      ON)
@@ -15,7 +16,10 @@ set(Boost_USE_STATIC_RUNTIME    OFF)
 set (CMAKE_CXX_STANDARD 14)
 
 find_package(Boost 1.65.1  REQUIRED COMPONENTS
-    system)
+    system
+    coroutine
+    thread
+    context)
 if(Boost_FOUND )
   include_directories(${Boost_INCLUDE_DIRS})
 endif()
@@ -24,14 +28,16 @@ FILE(GLOB_RECURSE HEADER "*engine/*.h")
 #FILE(GLOB_RECURSE SRC "engine/*.cpp")
 SET (SRC engine/chessboard.cpp
     engine/global.cpp
-    engine/playchamp.cpp
     engine/aiplayer.cpp
     engine/consoleopponent.cpp
     engine/humanplayer.cpp
     engine/client.cpp
+    engine/perfomancemeasurement.cpp
     engine/config.cpp)
 
 include_directories("engine")
+include_directories("tests")
+
 
 ##########GTEST
 # Download and unpack googletest at configure time
@@ -47,7 +53,7 @@ execute_process(COMMAND ${CMAKE_COMMAND} --build .
   RESULT_VARIABLE result
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download )
 if(result)
-  message(FATAL_ERROR "Build step for googletest failed: ${result}")
+  #message(FATAL_ERROR "Build step for googletest failed: ${result}")
 endif()
 
 # Prevent overriding the parent project's compiler/linker
@@ -68,13 +74,22 @@ if (CMAKE_VERSION VERSION_LESS 2.8.11)
 endif()
 
 # Now simply link against gtest or gtest_main as needed. Eg
-add_executable(unit_test engine/tests.cpp ${SRC} ${HEADER})
+add_executable(unit_test tests/tests.cpp ${SRC} ${HEADER})
 target_link_libraries(unit_test gtest_main ${Boost_LIBRARIES})
 
 
 add_executable(${PROJECT_NAME} engine/playchess.cpp ${SRC} ${HEADER})
 target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
 
+add_executable(server server/playserver.cpp ${SRC} ${HEADER})
+target_link_libraries(server ${Boost_LIBRARIES})
+
+#####Examples
+add_executable(example_ai_vs_human examples/ai_vs_human.cpp ${SRC} ${HEADER})
+target_link_libraries(example_ai_vs_human ${Boost_LIBRARIES})
+
+add_executable(example_ai_vs_ai examples/ai_vs_ai.cpp ${SRC} ${HEADER})
+target_link_libraries(example_ai_vs_ai ${Boost_LIBRARIES})
 
 #add_custom_command(
 #     TARGET unit_test
