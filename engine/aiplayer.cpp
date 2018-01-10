@@ -15,8 +15,8 @@ static const int QUISCENT_DEPTH = 4;
 #else
 static const int QUISCENT_DEPTH = 6;
 #endif
-AIPlayer::AIPlayer(Config *config, int color, int search_depth)
- : ChessPlayer(config, color),
+AIPlayer::AIPlayer(int color, int search_depth)
+ : ChessPlayer(color),
    ai_depth(search_depth)
 {
 	srand(time(NULL));

@@ -12,7 +12,7 @@ class HumanPlayer: public ChessPlayer {
 
 	public:
 	
-        HumanPlayer(Config * config, int color);
+        HumanPlayer(bool mode_slave, int color);
 		
 		~HumanPlayer();
 		
@@ -30,7 +30,8 @@ class HumanPlayer: public ChessPlayer {
 		* Process input. Frees buffer allocated by readInput()
 		*/
         bool processInput(const ChessBoard & board, const std::string &buf, Move & move) const;
-
+private:
+        bool mode_slave = false;
 };
 
 #endif

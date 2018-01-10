@@ -1,7 +1,6 @@
 #include "chessboard.h"
 #include "aiplayer.h"
 #include "humanplayer.h"
-#include "config.h"
 
 using namespace std;
 int main()
@@ -10,13 +9,9 @@ int main()
     ChessBoard board;
     board.initDefaultSetup();
 
-    // Create game config
-    Config config;
-    config.mode = Mode::Human;
-
     // Create players: ai and Human
-    ChessPlayer * player1 = new AIPlayer(&config, WHITE, 2);
-    ChessPlayer * player2 = new AIPlayer(&config, BLACK, 4);
+    ChessPlayer * player1 = new AIPlayer(WHITE, 2);
+    ChessPlayer * player2 = new AIPlayer(BLACK, 4);
 
     ChessPlayer::Status status = ChessPlayer::Normal;
 

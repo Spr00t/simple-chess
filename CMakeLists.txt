@@ -15,7 +15,7 @@ set(Boost_USE_STATIC_RUNTIME    OFF)
 
 set (CMAKE_CXX_STANDARD 14)
 
-find_package(Boost 1.65.1  REQUIRED COMPONENTS
+find_package(Boost 1.58  REQUIRED COMPONENTS
     system
     coroutine
     thread
@@ -29,11 +29,18 @@ FILE(GLOB_RECURSE HEADER "*engine/*.h")
 SET (SRC engine/chessboard.cpp
     engine/global.cpp
     engine/aiplayer.cpp
+    engine/timeout.cpp
+    engine/asyncgame.cpp
+    engine/asyncplayer.cpp
+    engine/asyncaiplayer.cpp
     engine/consoleopponent.cpp
     engine/humanplayer.cpp
-    engine/client.cpp
     engine/perfomancemeasurement.cpp
     engine/config.cpp)
+
+FILE(GLOB_RECURSE SERVER_SRC server/*.cpp)
+FILE(GLOB_RECURSE CLIENT_SRC client/*.cpp)
+FILE(GLOB_RECURSE NETWORK_COMMON_SRC network_common/*.cpp)
 
 include_directories("engine")
 include_directories("tests")
@@ -81,8 +88,11 @@ target_link_libraries(unit_test gtest_main ${Boost_LIBRARIES})
 add_executable(${PROJECT_NAME} engine/playchess.cpp ${SRC} ${HEADER})
 target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
 
-add_executable(server server/playserver.cpp ${SRC} ${HEADER})
+add_executable(server ${SERVER_SRC} ${NETWORK_COMMON_SRC} ${SRC} ${HEADER})
 target_link_libraries(server ${Boost_LIBRARIES})
+
+add_executable(client ${CLIENT_SRC} ${NETWORK_COMMON_SRC} ${SRC} ${HEADER})
+target_link_libraries(client ${Boost_LIBRARIES})
 
 #####Examples
 add_executable(example_ai_vs_human examples/ai_vs_human.cpp ${SRC} ${HEADER})
@@ -90,6 +100,9 @@ target_link_libraries(example_ai_vs_human ${Boost_LIBRARIES})
 
 add_executable(example_ai_vs_ai examples/ai_vs_ai.cpp ${SRC} ${HEADER})
 target_link_libraries(example_ai_vs_ai ${Boost_LIBRARIES})
+
+add_executable(example_async_ai_vs_ai examples/ai_vs_ai_async.cpp ${SRC} ${HEADER})
+target_link_libraries(example_async_ai_vs_ai ${Boost_LIBRARIES})
 
 #add_custom_command(
 #     TARGET unit_test

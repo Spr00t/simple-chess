@@ -33,7 +33,7 @@ class AIPlayer: public ChessPlayer {
 
 	public:
 	
-        AIPlayer(Config * config, int color, int search_depth);
+        AIPlayer(int color, int search_depth);
 
 		~AIPlayer();
 

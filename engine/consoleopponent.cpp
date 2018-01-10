@@ -11,10 +11,10 @@ using namespace boost;
 using namespace boost::process;
 using namespace std;
 
-ConsoleOpponent::ConsoleOpponent(const std::string &path, Config *config, int color)
-    : ChessPlayer(config, color)
+ConsoleOpponent::ConsoleOpponent(const std::string &path, int color)
+    : ChessPlayer(color)
 {
-    if (config == WHITE) {
+    if (color == WHITE) {
         process = child(path, "--slave", color == WHITE ? "white" : "black", std_out > pipe_out, std_in < pipe_in);
     } else {
         process = child(path, "--slave", color == WHITE ? "white" : "black", std_out > pipe_out, std_in < pipe_in);

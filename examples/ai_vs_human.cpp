@@ -10,13 +10,9 @@ int main()
     ChessBoard board;
     board.initDefaultSetup();
 
-    // Create game config
-    Config config;
-    config.mode = Mode::Human;
-
     // Create players: ai and Human
-    ChessPlayer * player1 = new AIPlayer(&config, WHITE, 3);
-    ChessPlayer * player2 = new HumanPlayer(&config, BLACK);
+    ChessPlayer * player1 = new AIPlayer(WHITE, 3);
+    ChessPlayer * player2 = new HumanPlayer(false, BLACK);
 
     ChessPlayer::Status status = ChessPlayer::Normal;
 

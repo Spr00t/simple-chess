@@ -14,9 +14,8 @@ class ChessPlayer
 
         enum Status { Normal, InCheck, Stalemate, Checkmate, Draw };
 
-        ChessPlayer(Config * config, int color)
-         : config(config),
-           color(color)
+        ChessPlayer(int color)
+         : color(color)
 		{};
 
 		virtual ~ChessPlayer(){};
@@ -37,7 +36,6 @@ class ChessPlayer
         }
 
 protected:
-        Config * config;
         /*
         * Guess what...
 		*/

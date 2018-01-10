@@ -16,7 +16,7 @@ class ConsoleOpponent : public ChessPlayer
 
         enum Status { Normal, InCheck, Stalemate, Checkmate };
 
-        ConsoleOpponent(const std::string & path, Config * config, int color);
+        ConsoleOpponent(const std::string & path, int color);
 
         virtual ~ConsoleOpponent(){};
 

@@ -2,7 +2,6 @@
 #include <string>
 
 using namespace std;
-
 Config Config::from_args(int argc, char *argv[]) {
     Config conf;
 

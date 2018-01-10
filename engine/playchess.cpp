@@ -9,75 +9,14 @@
 #include <iostream>
 #include <string.h>
 #include "global.h"
-#include "playchamp.h"
 #include "chessboard.h"
 #include "humanplayer.h"
 #include "aiplayer.h"
 #include "consoleopponent.h"
 #include "tests.h"
 #include "config.h"
+
 using namespace std;
-#define NOT !
-
-void test_fen() {
-
-    ChessBoard board;
-    //board.loadFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -");
-    //board.loadFEN("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
-    //board.loadFEN("K7/6r1/8/8/8/8/8/k6r b - -");
-    //board.loadFEN("8/3K4/8/3k4/6r1/8/8/8 b - -");
-    //board.loadFEN("8/8/3k4/8/3K4/8/6R1/8 b - -");
-//    board.loadFEN("6k1/R7/5K2/8/8/8/8/8 w - -");
-//    board.loadFEN("8/8/5K1k/8/8/8/6R1/8 w - -");
-//    board.loadFEN("8/7k/8/4K3/8/4B3/6B1/8 w - -");
-    board.loadFEN("5k2/5p2/8/8/8/8/1PPPPPP1/4K3 w - -");
-
-
-    AdvancedMoveData advanced;
-
-    Move mov;
-    bool found;
-    unique_ptr<ChessPlayer> black;
-    unique_ptr<ChessPlayer> white;
-
-    Config config;
-
-    black = make_unique<AIPlayer>(&config, BLACK, 2);
-    white = make_unique<AIPlayer>(&config, WHITE, 2);
-    Global::instance().set_logging_color(BLACK);
-
-    board.print();
-
-    while (true) {
-
-        if(board.next_move_color == WHITE)
-            found = white->getMove(board, mov, &advanced);
-        else
-            found = black->getMove(board, mov, &advanced);
-
-
-        if(!found)
-            break;
-
-        // execute move
-        board.move(mov);
-
-        board.print(mov);
-    }
-    ChessPlayer::Status status = board.getPlayerStatus(board.next_move_color);
-
-    switch(status)
-    {
-        case ChessPlayer::Checkmate:
-            printf("Checkmate\n");
-            break;
-        case ChessPlayer::Stalemate:
-            printf("Stalemate\n");
-            break;
-        default:
-            break;
-    }
-}
 
 int main(int argc, char *argv[]) {
     //sleep(10);
@@ -92,11 +31,6 @@ int main(int argc, char *argv[]) {
     AdvancedMoveData advanced;
     bool ai_black = true;
 
-    if (0) {
-        test_fen();
-        return 0;
-    }
-
     Config config = Config::from_args(argc, argv);
 
     if (config.modeMaster()) {
@@ -109,16 +43,16 @@ int main(int argc, char *argv[]) {
 
 
     if (config.modeMaster()) {
-        black = make_unique<ConsoleOpponent>(competitors[0], &config, BLACK);
-        white = make_unique<ConsoleOpponent>(competitors[1], &config, WHITE);
+        black = make_unique<ConsoleOpponent>(competitors[0], BLACK);
+        white = make_unique<ConsoleOpponent>(competitors[1], WHITE);
     } else {
         if (config.isAiBlack()) {
             ai_black = true;
-            black = make_unique<AIPlayer>(&config, BLACK, 4);
-            white = make_unique<HumanPlayer>(&config, WHITE);
+            black = make_unique<AIPlayer>(BLACK, 4);
+            white = make_unique<HumanPlayer>(config.modeSlave(), WHITE);
         } else {
-            black = make_unique<HumanPlayer>(&config, BLACK);
-            white = make_unique<AIPlayer>(&config, WHITE, 4);
+            black = make_unique<HumanPlayer>(config.modeSlave(), BLACK);
+            white = make_unique<AIPlayer>(WHITE, 4);
         }
     }
 
@@ -128,7 +62,7 @@ int main(int argc, char *argv[]) {
     //board.loadFEN("k7/4p1p1/8/4Pp2/8/8/5PP1/K7 b - - 0 1");
     board.loadFEN("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
 
-    Global::instance().set_logging_color(board.next_move_color);
+    Global::instance().setLoggingFileName(board.next_move_color == WHITE ? "white.log" : "black.log");
 
     black->prepare(board);
     white->prepare(board);

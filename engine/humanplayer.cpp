@@ -14,8 +14,9 @@ using namespace std;
 using namespace boost;
 using namespace chrono;
 
-HumanPlayer::HumanPlayer(Config *config, int color)
- : ChessPlayer(config, color)
+HumanPlayer::HumanPlayer(bool mode_slave, int color)
+ : ChessPlayer(color),
+   mode_slave(mode_slave)
 {}
 
 HumanPlayer::~HumanPlayer()
@@ -23,7 +24,7 @@ HumanPlayer::~HumanPlayer()
 
 void HumanPlayer::prepare(const ChessBoard &board)
 {
-    if (NOT config->modeSlave()) {
+    if (NOT mode_slave) {
         board.print();
     }
 }
@@ -31,7 +32,7 @@ void HumanPlayer::prepare(const ChessBoard &board)
 void HumanPlayer::showMove(const ChessBoard & orig_board, Move & move)
 {
     ChessBoard board = orig_board;
-    if (NOT config->modeSlave())
+    if (NOT mode_slave)
         board.print(move);
 
     board.move(move);
@@ -63,7 +64,7 @@ bool HumanPlayer::getMove(const ChessBoard & board, Move & move, AdvancedMoveDat
     string input;
 
 	for(;;) {
-        if (NOT config->modeSlave()) {
+        if (NOT mode_slave) {
             printf(">> ");
         } else {
             stringstream str;
@@ -87,12 +88,12 @@ bool HumanPlayer::getMove(const ChessBoard & board, Move & move, AdvancedMoveDat
             Global::instance().log(str.str());
 			continue;
 		}
-        if (config->modeSlave()) {
+        if (mode_slave) {
             stringstream str;
             str << "Got move " << move.toString();
             Global::instance().log(str.str());
         }
-        if (NOT config->modeSlave())
+        if (NOT mode_slave)
             printf("\n");
 		break;
 	}

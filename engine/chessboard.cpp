@@ -548,9 +548,11 @@ void MoveGenerator<capture_only>::getMoves(ChessBoard & board, int color, list<M
     // update necessary stuff here, lazy to do it in each subgenerations
     for (Move & m : moves) {
         m.passant_pos_opponent = board.passant_pos;
+        m.non_pawn_kick_moves_count_opponent = board.non_pawn_kick_moves_count;
     }
     for (Move & m : captures) {
         m.passant_pos_opponent = board.passant_pos;
+        m.non_pawn_kick_moves_count_opponent = board.non_pawn_kick_moves_count;
     }
 }
 template<bool capture_only>
@@ -1715,7 +1717,6 @@ void ChessBoard::move(const Move & move)
         square[passant_pos] = CLEAR_PASSANT(square[passant_pos]);
         passant_pos = -1;
     }
-
     if (move.capture || (FIGURE(move.figure) == PAWN)) {
        non_pawn_kick_moves_count=0;
     } else {

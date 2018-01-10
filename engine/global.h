@@ -16,7 +16,7 @@ class Global
 {
 public:
     Global();
-    void set_logging_color(int color);
+    void setLoggingFileName(const std::string & fileName);
     void log(const std::string & str);
     static Global& instance();
     int color = -1;

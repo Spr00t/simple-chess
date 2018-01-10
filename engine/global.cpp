@@ -13,9 +13,9 @@ Global::Global()
 
 }
 
-void Global::set_logging_color(int color)
+void Global::setLoggingFileName(const string &fileName)
 {
-    file.open(color == WHITE ? "white.log" : "black.log", fstream::out);
+    file.open(fileName, fstream::out);
 }
 
 void Global::log(const string &str)

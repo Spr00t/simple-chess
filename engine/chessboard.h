@@ -68,6 +68,7 @@ struct Move
 
     int non_pawn_kick_moves_count_opponent = 0;
 };
+typedef boost::optional<Move> TMoveOpt;
 static const Move EMPTY_MOVE = {0, 0, 0, 0, -1};
 
 enum Position {
