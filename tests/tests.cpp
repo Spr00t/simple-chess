@@ -18,7 +18,7 @@ using namespace std;
 using namespace boost;
 Tests::Tests()
 {
-    Global::instance().set_logging_color(BLACK);
+    Global::instance().setLoggingFileName("black.log");
 }
 
 bool Tests::RunAll()
@@ -45,10 +45,10 @@ bool Tests::TestEvaluation()
         "8/8/3K4/8/3k4/5r2/8/8 b - - 2 3",
         "8/8/3k4/8/3K4/5R2/8/8 w - - 2 3",
     };
-    Config config = Config::from_start_color(WHITE);
+
     for (const char * position: positions) {
         board.loadFEN(position);
-        AIPlayer player(&config, board.next_move_color, 3);
+        AIPlayer player(board.next_move_color, 3);
         Move move;
         AdvancedMoveData advanced;
         bool found = player.getMove(board, move, &advanced);
@@ -72,7 +72,7 @@ bool Tests::TestCheckMateIn3HalfMoves()
     for (const char * position: positions) {
         board.loadFEN(position);
 
-        AIPlayer player(&config, board.next_move_color, 4);
+        AIPlayer player(board.next_move_color, 4);
         Move move = EMPTY_MOVE;
         bool found = player.getMove(board, move);
         if (NOT found) return false;
@@ -87,10 +87,9 @@ bool Tests::TestCheckMateIn3HalfMoves()
 void Tests::TestAdvanced()
 {
     board.loadFEN("5k2/5p2/8/8/8/8/1PPPPPP1/4K3 w - - 2 3");
-    Config config = Config::from_start_color(WHITE);
     AdvancedMoveData advanced;
     
-    AIPlayer ai(&config, WHITE, 3);
+    AIPlayer ai(WHITE, 3);
     Move move;
     ai.getMove(board, move, &advanced);
     
