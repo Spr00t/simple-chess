@@ -73,7 +73,4 @@ void ServerPlayer::asyncShowResult(const ChessBoard &/*board*/, AsyncPlayer::End
     strand->post(handler);
 }
 
-void ServerPlayer::cancel()
-{
-    // not implemented
-}
+

@@ -16,7 +16,10 @@
 
 class Client : public boost::noncopyable {
 public:
+
     typedef std::function<void ()> TReadyHandler;
+    typedef std::function<void ()> TErrorHandler;
+
     Client(boost::asio::ip::tcp::socket socket);
 
     void start(TReadyHandler handler);
@@ -30,14 +33,20 @@ public:
 
     std::string getName() const;
 
+    void subscribeErrorHappened(TErrorHandler handler);
+
+    bool hasError() const;
+
 private:
 
     void onGreetingCompleted(const Message& message);
 
-    Protocol protocol;
+    ProtocolPtr protocol;
 
     TReadyHandler readyHandler;
+    TErrorHandler errorHandler;
     std::string name;
+    bool has_error_ = false;
 
 };
 

@@ -36,7 +36,7 @@ public:
     void onClientReady(TClientRecordPtr record);
 
     void tryNextGame();
-    void onGameEnded(TAsyncGamePtr gamePtr, AsyncPlayer::EndStatus status);
+    void onGameEnded(TAsyncGameWeakPtr gamePtr, AsyncPlayer::EndStatus status);
 
     void stop();
 
@@ -46,6 +46,8 @@ public:
 
     void startMatch(TMatchFinishedHanlder handler);
     TClientsMap getReadyClients() const;
+
+    void communicationLostWithClient(std::weak_ptr<TClientRecord> client);
 
 private:
     boost::asio::io_service::strand managerStrand;

@@ -32,8 +32,3 @@ void AsyncClientPlayer::asyncShowResult(const ChessBoard &board, AsyncPlayer::En
 {
     clientPtr->asyncShowResult(board, status, handler);
 }
-
-void AsyncClientPlayer::cancel()
-{
-    // not implemented
-}

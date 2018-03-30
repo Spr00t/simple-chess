@@ -11,7 +11,9 @@ public:
         NONE = 0,
         WHITE_WIN,
         DRAW,
-        WHITE_LOOSE
+        WHITE_LOOSE,
+        ERROR_WHITE,
+        ERROR_BLACK
     };
     typedef std::function <void (const Move&) > MoveReadyHandler;
     typedef std::function <void (EndStatus) >   ResultReadyHandler;
@@ -24,11 +26,6 @@ public:
     virtual void asyncGetNext(const ChessBoard & board, MoveReadyHandler handler) = 0;
     virtual void asyncShowMove(const ChessBoard & board, const Move & move, ReadyHandler handler) = 0;
     virtual void asyncShowResult(const ChessBoard & board, EndStatus status, ReadyHandler handler) = 0;
-
-    /**
-     * @brief cancel -- cancels any of the asunc operation
-     */
-    virtual void cancel() = 0;
 
 
     int getColor() const;

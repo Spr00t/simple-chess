@@ -11,7 +11,7 @@ int main()
 
 
     shared_ptr<AsyncAiPlayer> players[2] = {make_shared<AsyncAiPlayer>(WHITE, 2), make_shared<AsyncAiPlayer>(WHITE, 2)};
-    AsyncGame game(io_ptr, players[0], players[1]);
+    AsyncGame game(io_ptr, players[0], players[1], 2000);
     game.start([io_ptr](AsyncPlayer::EndStatus end_status) {
         switch (end_status) {
         case AsyncPlayer::WHITE_WIN:
@@ -22,6 +22,15 @@ int main()
             break;
         case AsyncPlayer::WHITE_LOOSE:
             cout << "White loose" << endl;
+            break;
+        case AsyncPlayer::ERROR_WHITE:
+            cout << "White loose(error)" << endl;
+            break;
+        case AsyncPlayer::ERROR_BLACK:
+            cout << "White win(error)" << endl;
+            break;
+        case AsyncPlayer::NONE:
+            assert(false);
             break;
         }
         io_ptr->stop();

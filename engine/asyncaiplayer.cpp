@@ -68,7 +68,3 @@ void AsyncAiPlayer::asyncShowResult(const ChessBoard &board, AsyncPlayer::EndSta
     strand->post(handler);
 }
 
-void AsyncAiPlayer::cancel()
-{
-    // not implemented
-}

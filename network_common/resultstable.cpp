@@ -48,6 +48,26 @@ void ResultsTable::recordScore(int whiteId, int blackId, int gamescore){
     allGames[whiteId][blackId].game_score = gamescore;
 }
 
+void ResultsTable::recordLooseForAllUnplayed(int player_id)
+{
+    Score score;
+    int p_count = allGames.size(); //it is a white player map games
+    score.maximum = (p_count - 1) * 2 * 2;
+    for (auto & whitePlayerGames : allGames) {
+        for (auto & game : whitePlayerGames.second) {
+           if (game.second.white_id == player_id) {
+               if (game.second.game_score == -1) {
+                   game.second.game_score = 0; // black win
+               }
+           } else if (game.second.black_id == player_id) {
+               if (game.second.game_score== -1) {
+                   game.second.game_score = 2; // white win
+               }
+           }
+        }
+    }
+}
+
 Score ResultsTable::getScore(int playerId) const
 {
     Score score;

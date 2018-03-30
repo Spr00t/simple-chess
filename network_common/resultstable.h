@@ -27,6 +27,9 @@ public:
     TGameRecordOption nextGame(std::set<int> freePlayerIds);
 
     void recordScore(int whiteId, int blackId, int gamescore);
+
+    void recordLooseForAllUnplayed(int player_id);
+
     Score getScore(int playerId) const;
 
     bool isFinished() const;

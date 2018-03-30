@@ -17,6 +17,11 @@ Protocol::Protocol(boost::asio::ip::tcp::socket socket):
     instance_id_ = instance_counter++;
 }
 
+void Protocol::subscribeErrorHappened(Protocol::TErrorHandler handler)
+{
+    error_handler_ = handler;
+}
+
 
 void Protocol::AsyncSendMessage(Message message, Protocol::TReadyHandler handler)
 {
@@ -24,9 +29,15 @@ void Protocol::AsyncSendMessage(Message message, Protocol::TReadyHandler handler
     request_stream << message;
 
     Global::instance().log(str(format("ID: %1% Message sent: %2%") % instance_id_ % message));
-    async_write(socket, request, [handler](const boost::system::error_code& err, std::size_t bytes_transferred) {
+    ProtocolWeakPtr w_ptr(shared_from_this());
+    async_write(socket, request, [handler, w_ptr](const boost::system::error_code& err, std::size_t /*bytes_transferred*/) {
         if (!err) {
             handler();
+        } else {
+            ProtocolPtr ptr(w_ptr);
+            if (ptr) {
+                ptr->error_handler_();
+            }
         }
     });
 
@@ -37,7 +48,7 @@ void Protocol::AsyncGetMessage(Protocol::TMessageHandler handler)
     async_read_until(socket,
                      response,
                      "\n",
-                     std::bind(&Protocol::parseMessage, this, handler,
+                     /*flow.wrap(*/std::bind(&Protocol::staticParseMessage, shared_from_this(), handler,
                       std::placeholders::_1,
                       std::placeholders::_2));
 }
@@ -55,5 +66,7 @@ void Protocol::parseMessage(Protocol::TMessageHandler messageHandler, const boos
         if (NOT message)
             throw runtime_error("");
         messageHandler(*message);
+    } else {
+        error_handler_();
     }
 }
