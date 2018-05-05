@@ -5,7 +5,6 @@ A basic Chess AI using min-max search with alpha-beta pruning and a simplistic
 approach to quiescent search.
 
 
-
 install prerequisites:
     sudo apt-get install libboost-all-dev
 
