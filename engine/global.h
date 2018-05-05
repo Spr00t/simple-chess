@@ -24,7 +24,6 @@ public:
     boost::posix_time::ptime start;
 public:
 
-
 };
 
 

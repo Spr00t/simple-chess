@@ -9,10 +9,13 @@ using namespace boost::posix_time;
 using namespace std;
 using namespace boost::asio;
 
-AsyncGame::AsyncGame(std::shared_ptr<boost::asio::io_service> io, std::shared_ptr<AsyncPlayer> player1, std::shared_ptr<AsyncPlayer> player2, int time_multiplier):
+//static const int time_multiplier = 1;
+
+static const int time_multiplier = 2000; // for debug purposes
+
+AsyncGame::AsyncGame(std::shared_ptr<boost::asio::io_service> io, std::shared_ptr<AsyncPlayer> player1, std::shared_ptr<AsyncPlayer> player2):
     io(io),
-    timeout(*io),
-    timer_mulitplier_(time_multiplier)
+    timeout(*io)
 {
     TPlayerStruct plStrct;
     flow = make_shared<io_service::strand>(*io);
@@ -50,28 +53,21 @@ void AsyncGame::start(TGameResultHandler handler)
     resultHandler = handler;
 }
 
-void AsyncGame::stopGame(AsyncPlayer::EndStatus status, bool show_white, bool show_black)
+void AsyncGame::stopGame()
 {
     stop = true;
-    if (show_white) {
-        int color = board.next_move_color;
-        /// show results in case of error only for next player
-        showResults(status, show_white, show_black);
-    }
     //resultHandler = TGameResultHandler();
 }
 
-void AsyncGame::onPrepared(TPlayer pl)
+void AsyncGame::onPrepared(TPlayer /*pl*/)
 {
     if (stop)
         return;
     readiness++;
-    pl.first->ready = true;
     if (readiness == 2) {
         players[0].second->asyncGetNext(board, flow->wrap(bind(&AsyncGame::onMoveReady, this, players[0], placeholders::_1)));
-        waiting_status_ = (board.next_move_color == WHITE ? FOR_WHITE: FOR_BLACK);
     }
-    timeout.async_wait(flow->wrap(bind(&AsyncGame::staticOnTimerExpired, shared_from_this())), seconds(60 * 2 * timer_mulitplier_));
+    timeout.async_wait(flow->wrap(bind(&AsyncGame::expired_timer, this)), seconds(60 * 2 * time_multiplier));
 }
 
 void AsyncGame::onShowedReady(AsyncGame::TPlayer /*pl*/)
@@ -89,21 +85,21 @@ void AsyncGame::onShowedReady(AsyncGame::TPlayer /*pl*/)
     switch (status) {
         case ChessPlayer::Checkmate:
             endStatus = (players[1].second->getColor() == WHITE ? AsyncPlayer::WHITE_LOOSE : AsyncPlayer::WHITE_WIN);
-            showResults(endStatus, true, true);
+            showResults(endStatus);
             stop = true;
             break;
         case ChessPlayer::Stalemate:
         case ChessPlayer::Draw:
-            showResults(AsyncPlayer::DRAW, true, true);
+            showResults(AsyncPlayer::DRAW);
+            break;
         default:
             sstr << "On showed ready: ";
             Global::instance().log(sstr.str());
             players[1].second->asyncGetNext(board, flow->wrap(bind(&AsyncGame::onMoveReady, this, players[1], placeholders::_1)));
-            waiting_status_ = (board.next_move_color == WHITE ? FOR_WHITE: FOR_BLACK);
             std::swap(players[0], players[1]);
             break;
     }
-    timeout.async_wait(flow->wrap(bind(&AsyncGame::staticOnTimerExpired, shared_from_this())), seconds(10 * timer_mulitplier_));
+    timeout.async_wait(flow->wrap(bind(&AsyncGame::expired_timer, this)), seconds(5 * time_multiplier));
 
 }
 
@@ -120,37 +116,28 @@ void AsyncGame::onMoveReady(AsyncGame::TPlayer /*pl*/, const Move &move)
     cout << board.toFEN() << endl;
 
     players[1].second->asyncShowMove(board, move, flow->wrap(std::bind(&AsyncGame::onShowedReady, this, players[1])));
-    waiting_status_ = (board.next_move_color == WHITE ? FOR_WHITE: FOR_BLACK);
 
-    timeout.async_wait(flow->wrap(bind(&AsyncGame::staticOnTimerExpired, shared_from_this())), seconds(5 * timer_mulitplier_));
+    timeout.async_wait(flow->wrap(bind(&AsyncGame::expired_timer, this)), seconds(5 * time_multiplier));
 }
 
-void AsyncGame::onResultShowed(bool error, int color)
+void AsyncGame::onResultShowed(AsyncGame::TPlayer pl)
 {
-    int number = (color == WHITE ? 0 : 1);
-    players[number].first->end_ready = true;
-    if (error || (players[0].first->end_ready && players[1].first->end_ready) ) {
+    pl.first->end_ready = true;
+    if (players[0].first->end_ready && players[1].first->end_ready ) {
         assert(endStatus);
         resultHandler(*endStatus);
         stop = true;
     }
 }
 
-
-void AsyncGame::showResults(AsyncPlayer::EndStatus status, bool show_white, bool show_black)
+void AsyncGame::showResults(AsyncPlayer::EndStatus status)
 {
     stop = true;
 
     endStatus = status;
-    bool is_error = (status == AsyncPlayer::ERROR_BLACK || status == AsyncPlayer::ERROR_WHITE);
 
-    int pl1_color = players[0].second->getColor();
-    int pl2_color = players[1].second->getColor();
-    if ((show_white && pl1_color == WHITE) || (show_black && pl1_color == BLACK))
-        players[0].second->asyncShowResult(board, status, bind(staticOnResultShowed, shared_from_this(), is_error, WHITE));
-
-    if ((show_white && pl2_color == WHITE) || (show_black && pl2_color == BLACK))
-        players[1].second->asyncShowResult(board, status, bind(staticOnResultShowed, shared_from_this(), is_error, BLACK));
+    players[0].second->asyncShowResult(board, status, bind(&AsyncGame::onResultShowed, this, players[0]));
+    players[1].second->asyncShowResult(board, status, bind(&AsyncGame::onResultShowed, this, players[1]));
 
     timeout.stop();
 }
@@ -161,18 +148,21 @@ void AsyncGame::expired_timer()
         return;
 
     if (players[0].first->ready && players[1].first->ready) {
+
         int id = (board.next_move_color == WHITE ? 0 : 1);
+
         stringstream sstr;
-        sstr << "Timer expired player on players move: " << (id ? "BLACK" : "WHITE");
+        sstr << "Timer expired player on players move" << id;
         Global::instance().log(sstr.str());
-        AsyncPlayer::EndStatus status = (board.next_move_color == WHITE ? AsyncPlayer::ERROR_WHITE : AsyncPlayer::ERROR_BLACK);
-        flow->post(bind(&AsyncGame::staticStopGame, shared_from_this(), status, true, true));
+        AsyncPlayer::EndStatus status = (board.next_move_color == WHITE ? AsyncPlayer::WHITE_WIN : AsyncPlayer::WHITE_LOOSE);
+        showResults(status);
+
     } else if (!players[0].first->ready && !players[1].first->ready) {
-        showResults(AsyncPlayer::DRAW, true, true);
+        showResults(AsyncPlayer::DRAW);
     } else if (!players[0].first->ready) {
-        showResults(AsyncPlayer::WHITE_LOOSE, true, true);
+        showResults(AsyncPlayer::WHITE_LOOSE);
     } else {
-        showResults(AsyncPlayer::WHITE_WIN, true, true);
+        showResults(AsyncPlayer::WHITE_WIN);
     }
     timeout.stop();
     stop = true;

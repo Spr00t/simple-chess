@@ -37,7 +37,7 @@ public:
     AsyncPlayer::EndStatus toStatus() const;
     TScoreOpt toScore() const;
 
-    Type type = NONE;
+    Type type;
     std::string data;
 };
 std::ostream  & operator<<(std::ostream & os, const Message & m);

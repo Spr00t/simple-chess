@@ -1,16 +1,13 @@
-/*Copyright 2018 Vladyslav Nadzuga
- */
+#include "network_common/protocol.h"
+#include "global.h"
+#include "serverplayer.h"
+#include "engine/asyncaiplayer.h"
+
 #include <iostream>
 #include <istream>
 #include <ostream>
 #include <string>
 #include <thread>
-
-#include "network_common/protocol.h"
-#include "engine/global.h"
-#include "serverplayer.h"
-#include "engine/asyncaiplayer.h"
-
 #include <boost/asio/io_service.hpp>
 #include <boost/asio.hpp>
 #include <boost/lexical_cast.hpp>
@@ -64,10 +61,10 @@ public:
         } else {
             server_player_ = make_shared<ServerPlayer>(WHITE, protocolPtr);
             white_player = server_player_;
-            black_player = make_shared<AsyncAiPlayer>(BLACK, 3);
+            black_player = make_shared<AsyncAiPlayer>(BLACK, 2);
         }
 
-        gamePtr = make_shared<AsyncGame>(io_ptr_, white_player, black_player, 2000);
+        gamePtr = make_shared<AsyncGame>(io_ptr_, white_player, black_player);
 
         server_player_->subscribeResultReady(game_strand.wrap(bind(&GameManager::onGameEnded, this, true, std::placeholders::_1)));
 
@@ -84,12 +81,8 @@ public:
             server_player_->asyncGetNext(gamePtr->getBoard(), [](const Move& ) {/*empty handler*/});
         }
 
-        bool error_status = (status == AsyncPlayer::ERROR_BLACK || status == AsyncPlayer::ERROR_WHITE);
-
-        if (error_status || (last_game_end_status_[0] && last_game_end_status_[1])) {
-            if (NOT error_status ) {
-                assert(last_game_end_status_[0] == last_game_end_status_[1]);
-            }
+        if (last_game_end_status_[0] && last_game_end_status_[1]) {
+            assert(last_game_end_status_[0] == last_game_end_status_[1]);
             game_played_count_++;
             last_game_end_status_[0] = AsyncPlayer::NONE;
             last_game_end_status_[1] = AsyncPlayer::NONE;

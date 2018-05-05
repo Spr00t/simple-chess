@@ -76,81 +76,63 @@ void ClientManager::tryNextGame()
         blackPlayerRecord->busy = true;
         TAsyncPlayerPtr whitePlayer = make_shared<AsyncClientPlayer>(whitePlayerRecord->client, WHITE);
         TAsyncPlayerPtr blackPlayer = make_shared<AsyncClientPlayer>(blackPlayerRecord->client, BLACK);
-        TAsyncGamePtr game = make_shared<AsyncGame>(io, whitePlayer, blackPlayer, 1);
+        TAsyncGamePtr game = make_shared<AsyncGame>(io, whitePlayer, blackPlayer);
         TGameRecord record = {
             white_id,
             black_id,
             game
         };
         gamesList.push_back(record);
-        game->start(managerStrand.wrap(bind(&ClientManager::onGameEnded, this, TAsyncGameWeakPtr(game), std::placeholders::_1)));
+        game->start(managerStrand.wrap(bind(&ClientManager::onGameEnded, this, game, std::placeholders::_1)));
 
         /// try until all available games are played
         managerStrand.post(bind(&ClientManager::tryNextGame, this));
     }
 }
 
-void ClientManager::onGameEnded(TAsyncGameWeakPtr gameWeakPtr, AsyncPlayer::EndStatus status)
+void ClientManager::onGameEnded(TAsyncGamePtr gamePtr, AsyncPlayer::EndStatus status)
 {
     cout << "on game ended\n";
-    if (TAsyncGamePtr gamePtr = gameWeakPtr.lock()) {
-        if (!gamePtr) throw runtime_error("Game has already been deleted");
 
+    for (TGameList::iterator it = gamesList.begin(); it != gamesList.end(); it++) {
+        TGameRecord & record = *it;
+        if (record.game == gamePtr) {
+            int gamescore = 0;
 
-        for (TGameList::iterator it = gamesList.begin(); it != gamesList.end(); it++) {
-            TGameRecord record = *it;
-            if (record.game == gamePtr) {
-                int gamescore = 0;
-
-                switch (status) {
-                case AsyncPlayer::ERROR_BLACK:
-                case AsyncPlayer::WHITE_WIN:
-                    gamescore = 2;
-                    break;
-                case AsyncPlayer::DRAW:
-                    gamescore = 1;
-                    break;
-                case AsyncPlayer::ERROR_WHITE:
-                case AsyncPlayer::WHITE_LOOSE:
-                    gamescore = 0;
-                    break;
-                case AsyncPlayer::NONE:
-                    throw runtime_error("Uncorrect end game status");
-                }
-
-                TClientRecordPtr whitePlayerRecord = readyClients[record.white_id];
-                TClientRecordPtr blackPlayerRecord = readyClients[record.black_id];
-
-                whitePlayerRecord->busy = false;
-                blackPlayerRecord->busy = false;
-                resultsTable.recordScore(record.white_id, record.black_id, gamescore);
-
-                int error_player_id = -1;
-                if (status == AsyncPlayer::ERROR_BLACK) {
-                    error_player_id = blackPlayerRecord->id;
-                } else if (status == AsyncPlayer::ERROR_WHITE) {
-                    error_player_id = whitePlayerRecord->id;
-                }
-
-                if (error_player_id != -1) {
-                    resultsTable.recordLooseForAllUnplayed(error_player_id);
-                }
-
-
-                if (NOT resultsTable.isFinished()) {
-                    managerStrand.post(bind(&ClientManager::tryNextGame, this));
-                } else {
-                    for (pair<int, TClientRecordPtr> client_record_pair : readyClients) {
-                        TClientRecordPtr client_record = client_record_pair.second;
-                        Score score = resultsTable.getScore(client_record->id);
-                        if (NOT client_record->client->hasError()) {
-                            client_record->client->asyncShowMatchResult(score, managerStrand.wrap(bind(&ClientManager::onShowResultReady, this, client_record->id)));
-                        }
-                    }
-                }
-                gamesList.erase(it);
+            switch (status) {
+            case AsyncPlayer::WHITE_WIN:
+                gamescore = 2;
                 break;
+            case AsyncPlayer::DRAW:
+                gamescore = 1;
+                break;
+            case AsyncPlayer::WHITE_LOOSE:
+                gamescore = 0;
+                break;
+            case AsyncPlayer::NONE:
+                throw runtime_error("Uncorrect end game status");
             }
+
+
+            TClientRecordPtr whitePlayerRecord = readyClients[record.white_id];
+            TClientRecordPtr blackPlayerRecord = readyClients[record.black_id];
+
+            whitePlayerRecord->busy = false;
+            blackPlayerRecord->busy = false;
+            resultsTable.recordScore(record.white_id, record.black_id, gamescore);
+
+            record.game->stopGame();
+
+            gamesList.erase(it);
+        }
+    }
+    if (NOT resultsTable.isFinished()) {
+        managerStrand.post(bind(&ClientManager::tryNextGame, this));
+    } else {
+        for (pair<int, TClientRecordPtr> client_record_pair : readyClients) {
+            TClientRecordPtr client_record = client_record_pair.second;
+            Score score = resultsTable.getScore(client_record->id);
+            client_record->client->asyncShowMatchResult(score, managerStrand.wrap(bind(&ClientManager::onShowResultReady, this, client_record->id)));
         }
     }
 }
@@ -170,7 +152,7 @@ void ClientManager::onShowResultReady(int id)
     bool all_ready = true;
     for (pair<int, TClientRecordPtr> client_pair: readyClients) {
         TClientRecordPtr ptr = client_pair.second;
-        if (NOT ptr->result_ready_ && NOT ptr->client->hasError()) {
+        if (NOT ptr->result_ready_) {
             all_ready = false;
             break;
         }
@@ -190,36 +172,12 @@ void ClientManager::startMatch(ClientManager::TMatchFinishedHanlder handler)
     matchFinishedHandler = handler;
 
     resultsTable.init(getReadyPlayerIds());
-
-    for (pair<int, TClientRecordPtr> client_pair: readyClients) {
-        TClientRecordPtr ptr = client_pair.second;
-        if (NOT ptr->result_ready_) {
-            ptr->client->subscribeErrorHappened(managerStrand.wrap(bind(&ClientManager::communicationLostWithClient, this, ptr)));
-        }
-    }
     managerStrand.post(bind(&ClientManager::tryNextGame, this));
 }
 
 ClientManager::TClientsMap ClientManager::getReadyClients() const
 {
     return readyClients;
-}
-
-void ClientManager::communicationLostWithClient(std::weak_ptr<ClientManager::TClientRecord> client)
-{
-    if (TClientRecordPtr clientPtr = client.lock()) {
-        //TAsyncGamePtr gamePtr = clientPtr->;
-        for (TGameList::iterator it = gamesList.begin(); it != gamesList.end(); it++) {
-            TGameRecord record = *it;
-            int white_id = record.white_id;
-            int black_id = record.black_id;
-            if (white_id == clientPtr->id || black_id == clientPtr->id) {
-                AsyncPlayer::EndStatus status = (white_id == clientPtr->id ? AsyncPlayer::ERROR_WHITE : AsyncPlayer::ERROR_BLACK);
-
-                record.game->stopGame(status, status != AsyncPlayer::ERROR_WHITE, status != AsyncPlayer::ERROR_BLACK);
-            }
-        }
-    }
 }
 
 

@@ -70,14 +70,9 @@ Message Message::fromStatus(AsyncPlayer::EndStatus status)
         return Message(Message::RESULT, "draw");
     case AsyncPlayer::WHITE_LOOSE:
         return Message(Message::RESULT, "white_loose");
-    case AsyncPlayer::ERROR_WHITE:
-        return Message(Message::RESULT, "error_white");
-    case AsyncPlayer::ERROR_BLACK:
-        return Message(Message::RESULT, "error_black");
     case AsyncPlayer::NONE:
         assert(false);
     }
-    return Message();
 }
 
 Message Message::fromScore(Score score)
@@ -116,10 +111,6 @@ AsyncPlayer::EndStatus Message::toStatus() const {
             status = AsyncPlayer::WHITE_LOOSE;
         } else if (data == "draw") {
             status = AsyncPlayer::DRAW;
-        } else if (data == "error_white") {
-            status = AsyncPlayer::ERROR_WHITE;
-        } else if (data == "error_black") {
-            status = AsyncPlayer::ERROR_BLACK;
         }
     }
     return status;
