@@ -3,10 +3,11 @@ sudo: false
 language:
   - cpp
 
-os:
-  - linux
-      sudo: required
-#  - osx
+matrix:
+  include:
+    - os: linux
+       sudo: required
+    - os: osx
 
 addons:
   apt:
