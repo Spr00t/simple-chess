@@ -1,4 +1,4 @@
-sudo: false
+udo: false
 
 language:
   - cpp
@@ -6,8 +6,9 @@ language:
 matrix:
   include:
     - os: linux
-       sudo: required
     - os: osx
+
+sudo: enabled
 
 addons:
   apt:
