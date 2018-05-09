@@ -10,6 +10,9 @@ matrix:
 
 sudo: enabled
 
+compiler:
+  - clang
+
 addons:
   apt:
     sources:
