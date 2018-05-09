@@ -15,11 +15,9 @@ set(Boost_USE_STATIC_RUNTIME    OFF)
 
 set (CMAKE_CXX_STANDARD 14)
 
-find_package(Boost 1.58  REQUIRED COMPONENTS
+find_package(Boost 1.54  REQUIRED COMPONENTS
     system
-    coroutine
-    thread
-    context)
+    thread)
 if(Boost_FOUND )
   include_directories(${Boost_INCLUDE_DIRS})
 endif()
