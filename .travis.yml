@@ -1,3 +1,5 @@
+sudo: false
+
 language:
   - cpp
 
@@ -16,7 +18,6 @@ addons:
 before_install:
   - if [ $TRAVIS_OS_NAME = linux ]; then sudo apt-get install libboost-all-dev; fi
   - if [ $TRAVIS_OS_NAME = osx ];  then brew install boost; fi
- sudo apt-get install libboost-all-dev
 
 script:
   - cmake -H. -Bbuild
